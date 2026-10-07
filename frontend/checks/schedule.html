@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>달력 및 예약 확인</title>
+<div id="root"></div>
+<script type="module">
+  import React, { useEffect, useState } from 'react';
+  import { createRoot } from 'react-dom/client';
+  import { Calendar, Reservations } from '../src/Pages.tsx';
+  import { dateObj, dateString, defaultPreferences, fresh, today } from '../src/model.ts';
+  import '../src/styles.css';
+  const model = fresh(), next = dateObj(today()); next.setDate(next.getDate() + 1);
+  const date = dateString(next);
+  model.events = Array.from({ length: 6 }, (_, i) => ({ id: `dense-${i}`, workspaceId: 1, title: `일정 ${i + 1}`, date: today(), endDate: today(), start: `1${i}:00`, end: `1${i}:30`, assigneeIds: ['me'], visibility: 'workspace', status: '예정', work: '', createdBy: 'me' }));
+  model.events[4].title = '일정 5 · 네트워크 보안 취약점 분석 결과 공유';
+  model.events[4].assigneeIds = ['gitae'];
+  model.events[5].endDate = date;
+  model.bookings = [
+    { id: 'mine', workspaceId: 1, date, start: '10:00', end: '11:30', status: '확정', ownerId: 'me', createdAt: '' },
+    { id: 'external', workspaceId: 4, date, start: '14:00', end: '15:00', status: '확정', ownerId: 'jisu', createdAt: '' },
+    { id: 'cancelled', workspaceId: 1, date, start: '12:00', end: '13:00', status: '취소', ownerId: 'me', createdAt: '' },
+    { id: 'late', workspaceId: 1, date, start: '22:30', end: '24:00', status: '확정', ownerId: 'minseo', createdAt: '' }
+  ];
+  function Check() {
+    const [page, setPage] = useState('calendar'), [prefs, setPrefs] = useState(() => ({ ...defaultPreferences, ...JSON.parse(localStorage.getItem('cert-is-calendar-pin-check') || '{}') })), [action, setAction] = useState(null), [team, setTeam] = useState(false);
+    useEffect(() => { localStorage.setItem('cert-is-calendar-pin-check', JSON.stringify(prefs)); }, [prefs]);
+    const common = { model, session: { userId: prefs.userId, officer: false }, prefs, setPrefs: patch => setPrefs(old => ({ ...old, ...patch })), open: setAction, activity: team ? model.workspaces[0] : undefined };
+    return React.createElement('main', { className: 'page', style: { height: '100dvh', overflow: 'auto' } },
+      React.createElement('nav', { className: 'button-row' }, ...['calendar', 'reservation'].map(id => React.createElement('button', { className: 'button small', key: id, onClick: () => setPage(id) }, id === 'calendar' ? '달력 확인' : '예약 확인'))),
+      React.createElement('nav', { className: 'button-row' },
+        React.createElement('button', { className: 'button small', onClick: () => { setPrefs(defaultPreferences); setTeam(false); } }, '즐겨찾기 검사 초기화'),
+        React.createElement('button', { className: 'button small', onClick: () => setPrefs(old => ({ ...old, userId: old.userId === 'me' ? 'gitae' : 'me' })) }, '사용자 전환'),
+        React.createElement('button', { className: 'button small', onClick: () => setPrefs(old => ({ ...old, calendarMine: !old.calendarMine })) }, '내 담당 필터 전환'),
+        React.createElement('button', { className: 'button small', onClick: () => setTeam(old => !old) }, '팀 달력 전환')
+      ),
+      React.createElement(page === 'calendar' ? Calendar : Reservations, common),
+      React.createElement('output', { 'aria-label': '선택한 동작' }, JSON.stringify(action))
+    );
+  }
+  createRoot(document.getElementById('root')).render(React.createElement(Check));
+</script>
+</html>

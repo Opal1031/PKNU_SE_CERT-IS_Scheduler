@@ -1,0 +1,961 @@
+{
+  "workspaces": [
+    {
+      "id": 1,
+      "name": "CERT-IS 통합 관리",
+      "type": "project",
+      "initial": "CI",
+      "field": "웹 보안",
+      "status": "진행 중",
+      "members": 4,
+      "memberNames": [
+        "나",
+        "기태",
+        "민서",
+        "혜림"
+      ],
+      "description": "동아리 운영을 하나의 공간으로",
+      "memberIds": [
+        "me",
+        "gitae",
+        "minseo",
+        "hyelim"
+      ],
+      "leaderId": "me",
+      "createdBy": "me",
+      "goal": "동아리 운영을 하나의 공간으로",
+      "startDate": "",
+      "endDate": "",
+      "updatedAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 2,
+      "name": "웹 취약점 연구",
+      "type": "project",
+      "initial": "WS",
+      "field": "웹 보안",
+      "status": "진행 중",
+      "members": 3,
+      "memberNames": [
+        "나",
+        "민서",
+        "기태"
+      ],
+      "description": "웹 취약점 분석과 실습",
+      "memberIds": [
+        "me",
+        "minseo",
+        "gitae"
+      ],
+      "leaderId": "minseo",
+      "createdBy": "minseo",
+      "goal": "웹 취약점 분석과 실습",
+      "startDate": "",
+      "endDate": "",
+      "updatedAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 3,
+      "name": "네트워크 보안",
+      "type": "study",
+      "initial": "NS",
+      "field": "네트워크",
+      "status": "진행 중",
+      "members": 4,
+      "memberNames": [
+        "나",
+        "기태",
+        "민서",
+        "혜림"
+      ],
+      "description": "네트워크 기본기와 보안 학습",
+      "memberIds": [
+        "me",
+        "gitae",
+        "minseo",
+        "hyelim"
+      ],
+      "leaderId": "hyelim",
+      "createdBy": "hyelim",
+      "goal": "네트워크 기본기와 보안 학습",
+      "startDate": "",
+      "endDate": "",
+      "updatedAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 4,
+      "name": "침해 대응 연구",
+      "type": "project",
+      "initial": "IR",
+      "field": "웹 보안",
+      "status": "진행 중",
+      "members": 3,
+      "memberNames": [
+        "지수",
+        "도윤",
+        "수빈"
+      ],
+      "description": "로그 분석과 침해 대응 시나리오 연구",
+      "memberIds": [
+        "jisu",
+        "doyun",
+        "subin"
+      ],
+      "leaderId": "jisu",
+      "createdBy": "jisu",
+      "goal": "로그 분석과 침해 대응 시나리오 연구",
+      "startDate": "",
+      "endDate": "",
+      "updatedAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 5,
+      "name": "암호학 기초",
+      "type": "study",
+      "initial": "CR",
+      "field": "암호학",
+      "status": "진행 중",
+      "members": 2,
+      "memberNames": [
+        "지수",
+        "도윤"
+      ],
+      "description": "암호 알고리즘과 기초 수학 학습",
+      "memberIds": [
+        "jisu",
+        "doyun"
+      ],
+      "leaderId": "doyun",
+      "createdBy": "doyun",
+      "goal": "암호 알고리즘과 기초 수학 학습",
+      "startDate": "",
+      "endDate": "",
+      "updatedAt": "2026-10-06T00:00:00Z"
+    }
+  ],
+  "rooms": [
+    {
+      "id": 1,
+      "workspaceId": 1,
+      "name": "일반",
+      "week": "",
+      "topic": "전체",
+      "members": [
+        "나",
+        "기태",
+        "민서",
+        "혜림"
+      ],
+      "messages": [
+        {
+          "name": "기태",
+          "time": "09:30",
+          "text": "프로젝트 일정과 진행 상황은 이 방에서 공유해 주세요.",
+          "id": "seed-1-0",
+          "authorId": "gitae",
+          "createdAt": "2026-10-06T09:30:00+09:00"
+        }
+      ],
+      "memberIds": [
+        "me",
+        "gitae",
+        "minseo",
+        "hyelim"
+      ],
+      "tagIds": [],
+      "createdAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 2,
+      "workspaceId": 1,
+      "name": "1주차 회의",
+      "week": "1주차",
+      "topic": "기획",
+      "members": [
+        "나",
+        "기태",
+        "민서",
+        "혜림"
+      ],
+      "messages": [
+        {
+          "name": "기태",
+          "time": "14:00",
+          "text": "이번 주에는 시스템 범위와 역할을 정리하면 좋겠습니다.",
+          "id": "seed-2-0",
+          "authorId": "gitae",
+          "createdAt": "2026-10-06T14:00:00+09:00"
+        }
+      ],
+      "memberIds": [
+        "me",
+        "gitae",
+        "minseo",
+        "hyelim"
+      ],
+      "tagIds": [
+        "week-1-0",
+        "topic-1-0"
+      ],
+      "createdAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 3,
+      "workspaceId": 1,
+      "name": "2주차 회의",
+      "week": "2주차",
+      "topic": "기획",
+      "members": [
+        "나",
+        "기태",
+        "민서"
+      ],
+      "messages": [
+        {
+          "name": "민서",
+          "time": "14:00",
+          "text": "프로젝트 일정과 예약은 함께 확인할 수 있도록 해볼게요.",
+          "id": "seed-3-0",
+          "authorId": "minseo",
+          "createdAt": "2026-10-06T14:00:00+09:00"
+        }
+      ],
+      "memberIds": [
+        "me",
+        "gitae",
+        "minseo"
+      ],
+      "tagIds": [
+        "week-1-1",
+        "topic-1-0"
+      ],
+      "createdAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 4,
+      "workspaceId": 1,
+      "name": "3주차 회의",
+      "week": "3주차",
+      "topic": "설계",
+      "members": [
+        "나",
+        "기태",
+        "민서",
+        "혜림"
+      ],
+      "messages": [
+        {
+          "name": "기태",
+          "time": "14:02",
+          "text": "프로젝트에 들어오면 팀 캘린더를 기본으로 보여주면 어떨까요?",
+          "id": "seed-4-0",
+          "authorId": "gitae",
+          "createdAt": "2026-10-06T14:02:00+09:00"
+        },
+        {
+          "name": "나",
+          "time": "14:04",
+          "text": "좋아요. 채팅 공간은 유지하고, 오른쪽에서 캘린더와 회의록을 보면서 동시에 작업하면 되겠네요.",
+          "id": "seed-4-1",
+          "authorId": "me",
+          "createdAt": "2026-10-06T14:04:00+09:00"
+        },
+        {
+          "name": "민서",
+          "time": "14:06",
+          "text": "예약은 같은 창을 사용하고 프로젝트 안에서 열면 팀을 미리 선택해두면 되겠네요.",
+          "id": "seed-4-2",
+          "authorId": "minseo",
+          "createdAt": "2026-10-06T14:06:00+09:00"
+        },
+        {
+          "name": "혜림",
+          "time": "14:08",
+          "text": "AI 추천 화면은 개인 기능으로 별도로 두면 될 것 같아요.",
+          "id": "seed-4-3",
+          "authorId": "hyelim",
+          "createdAt": "2026-10-06T14:08:00+09:00"
+        }
+      ],
+      "memberIds": [
+        "me",
+        "gitae",
+        "minseo",
+        "hyelim"
+      ],
+      "tagIds": [
+        "week-1-2",
+        "topic-1-1"
+      ],
+      "createdAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 5,
+      "workspaceId": 2,
+      "name": "일반",
+      "week": "",
+      "topic": "전체",
+      "members": [
+        "나",
+        "민서",
+        "기태"
+      ],
+      "messages": [
+        {
+          "name": "민서",
+          "time": "11:20",
+          "text": "다음 실습은 수요일 오후에 진행할게요.",
+          "id": "seed-5-0",
+          "authorId": "minseo",
+          "createdAt": "2026-10-06T11:20:00+09:00"
+        }
+      ],
+      "memberIds": [
+        "me",
+        "minseo",
+        "gitae"
+      ],
+      "tagIds": [],
+      "createdAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 6,
+      "workspaceId": 2,
+      "name": "분석 회의",
+      "week": "1주차",
+      "topic": "설계",
+      "members": [
+        "나",
+        "민서"
+      ],
+      "messages": [],
+      "memberIds": [
+        "me",
+        "minseo"
+      ],
+      "tagIds": [
+        "week-2-0",
+        "topic-2-1"
+      ],
+      "createdAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 7,
+      "workspaceId": 3,
+      "name": "일반",
+      "week": "",
+      "topic": "전체",
+      "members": [
+        "나",
+        "기태",
+        "민서",
+        "혜림"
+      ],
+      "messages": [
+        {
+          "name": "혜림",
+          "time": "16:40",
+          "text": "다음 스터디 전까지 TCP/IP 내용을 읽어 와 주세요.",
+          "id": "seed-7-0",
+          "authorId": "hyelim",
+          "createdAt": "2026-10-06T16:40:00+09:00"
+        }
+      ],
+      "memberIds": [
+        "me",
+        "gitae",
+        "minseo",
+        "hyelim"
+      ],
+      "tagIds": [],
+      "createdAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 8,
+      "workspaceId": 4,
+      "name": "일반",
+      "week": "",
+      "topic": "전체",
+      "members": [
+        "지수",
+        "도윤",
+        "수빈"
+      ],
+      "messages": [
+        {
+          "name": "지수",
+          "time": "10:20",
+          "text": "금요일 로그 분석 일정 확인 부탁드립니다.",
+          "id": "seed-8-0",
+          "authorId": "jisu",
+          "createdAt": "2026-10-06T10:20:00+09:00"
+        }
+      ],
+      "memberIds": [
+        "jisu",
+        "doyun",
+        "subin"
+      ],
+      "tagIds": [],
+      "createdAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 9,
+      "workspaceId": 5,
+      "name": "일반",
+      "week": "1주차",
+      "topic": "전체",
+      "members": [
+        "지수",
+        "도윤"
+      ],
+      "messages": [
+        {
+          "name": "도윤",
+          "time": "16:00",
+          "text": "이번 주에는 대칭키 암호를 공부합니다.",
+          "id": "seed-9-0",
+          "authorId": "doyun",
+          "createdAt": "2026-10-06T16:00:00+09:00"
+        }
+      ],
+      "memberIds": [
+        "jisu",
+        "doyun"
+      ],
+      "tagIds": [
+        "week-5-0"
+      ],
+      "createdAt": "2026-10-06T00:00:00Z"
+    }
+  ],
+  "documents": {
+    "1": "# 일반 회의록\n\n## 공유 내용\n- 프로젝트 진행 상황을 기록합니다.\n",
+    "2": "# 1주차 회의록\n\n## 논의 내용\n- 프로젝트 범위와 역할 분담\n- 동아리 운영의 불편한 점 정리\n",
+    "3": "# 2주차 회의록\n\n## 논의 내용\n- 통합 캘린더와 예약 화면\n- 프로젝트 일정의 담당자 표시\n",
+    "4": "# 3주차 회의록\n\n일시: 2026.10.06 · 참석: 기태, 민서, 나, 혜림\n\n## 논의 내용\n- 프로젝트의 기본 화면은 팀 캘린더\n- 채팅방 목록은 화면 전환 중에도 유지\n- 예약은 전역과 프로젝트에서 같은 창 사용\n\n## 결정 사항\n- 예약은 **30분 단위**\n- 회의 채팅을 원본으로 남기고 Markdown으로 정리\n\n## 다음 할 일\n- [ ] 공통 레이아웃 와이어프레임 확인\n- [ ] 예약 중복 안내 흐름 확인\n",
+    "5": "# 웹 취약점 연구 회의록\n\n## 다음 실습\n- 실습 환경 준비\n",
+    "6": "# 분석 회의록\n\n내용을 작성해 주세요.\n",
+    "7": "# 네트워크 보안 스터디\n\n## 학습 내용\n- TCP/IP 기본 구조\n",
+    "8": "# 침해 대응 연구\n\n## 진행 상황\n- 로그 분석 일정 확인\n",
+    "9": "# 암호학 기초\n\n## 학습 계획\n- 대칭키 암호 학습\n"
+  },
+  "bookings": [
+    {
+      "id": 105,
+      "workspaceId": 4,
+      "date": "2026-10-09",
+      "start": "11:00",
+      "end": "12:00",
+      "owner": "지수",
+      "purpose": "침해 대응 회의",
+      "ownerId": "jisu",
+      "status": "확정",
+      "createdAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 106,
+      "workspaceId": 5,
+      "date": "2026-10-10",
+      "start": "14:00",
+      "end": "15:00",
+      "owner": "도윤",
+      "purpose": "암호학 스터디",
+      "ownerId": "doyun",
+      "status": "확정",
+      "createdAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 101,
+      "workspaceId": 1,
+      "date": "2026-10-06",
+      "start": "14:00",
+      "end": "15:00",
+      "owner": "나",
+      "purpose": "UI 구조 회의",
+      "ownerId": "me",
+      "status": "확정",
+      "createdAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 102,
+      "workspaceId": 2,
+      "date": "2026-10-07",
+      "start": "15:00",
+      "end": "16:30",
+      "owner": "팀원",
+      "ownerId": "minseo",
+      "status": "확정",
+      "createdAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 103,
+      "workspaceId": 1,
+      "date": "2026-10-08",
+      "start": "13:30",
+      "end": "14:30",
+      "owner": "기태",
+      "ownerId": "gitae",
+      "status": "확정",
+      "createdAt": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": 104,
+      "workspaceId": 3,
+      "date": "2026-10-09",
+      "start": "16:00",
+      "end": "17:00",
+      "owner": "팀원",
+      "ownerId": "gitae",
+      "status": "확정",
+      "createdAt": "2026-10-06T00:00:00Z"
+    }
+  ],
+  "tagOrders": {
+    "1": [
+      "1주차",
+      "2주차",
+      "3주차"
+    ],
+    "2": [
+      "1주차",
+      "2주차",
+      "3주차"
+    ],
+    "3": [
+      "1주차",
+      "2주차",
+      "3주차"
+    ],
+    "4": [
+      "1주차"
+    ],
+    "5": [
+      "1주차"
+    ]
+  },
+  "schemaVersion": 2,
+  "revision": 0,
+  "audit": [],
+  "events": [
+    {
+      "id": 210,
+      "date": "2026-10-09",
+      "start": "10:00",
+      "end": "11:00",
+      "title": "침해 로그 분석",
+      "workspaceId": 4,
+      "owner": "지수",
+      "kind": "team",
+      "description": "침해 대응 연구팀 내부 일정",
+      "assigneeIds": [
+        "jisu"
+      ],
+      "endDate": "2026-10-09",
+      "visibility": "workspace",
+      "status": "예정",
+      "work": "침해 대응 연구팀 내부 일정",
+      "createdBy": "jisu"
+    },
+    {
+      "id": 211,
+      "date": "2026-10-10",
+      "start": "13:00",
+      "end": "14:00",
+      "title": "대칭키 암호 학습",
+      "workspaceId": 5,
+      "owner": "도윤",
+      "kind": "team",
+      "description": "암호학 스터디 내부 일정",
+      "assigneeIds": [
+        "doyun"
+      ],
+      "endDate": "2026-10-10",
+      "visibility": "workspace",
+      "status": "예정",
+      "work": "암호학 스터디 내부 일정",
+      "createdBy": "doyun"
+    },
+    {
+      "id": 201,
+      "date": "2026-10-06",
+      "start": "10:00",
+      "end": "11:00",
+      "title": "공통 레이아웃 설계",
+      "workspaceId": 1,
+      "owner": "나",
+      "kind": "mine",
+      "description": "전체 탐색 · 채팅 탐색 · 메인 작업 영역 구성",
+      "assigneeIds": [
+        "me"
+      ],
+      "endDate": "2026-10-06",
+      "visibility": "workspace",
+      "status": "예정",
+      "work": "전체 탐색 · 채팅 탐색 · 메인 작업 영역 구성",
+      "createdBy": "me"
+    },
+    {
+      "id": 202,
+      "date": "2026-10-08",
+      "start": "10:00",
+      "end": "11:30",
+      "title": "DB·API 설계",
+      "workspaceId": 1,
+      "owner": "민서",
+      "kind": "team",
+      "description": "일정 담당자와 예약 데이터 관계 정리",
+      "assigneeIds": [
+        "minseo"
+      ],
+      "endDate": "2026-10-08",
+      "visibility": "workspace",
+      "status": "예정",
+      "work": "일정 담당자와 예약 데이터 관계 정리",
+      "createdBy": "minseo"
+    },
+    {
+      "id": 203,
+      "date": "2026-10-12",
+      "start": "14:00",
+      "end": "15:00",
+      "title": "와이어프레임 검토",
+      "workspaceId": 1,
+      "owner": "나",
+      "kind": "mine",
+      "description": "팀원과 화면 흐름 확인",
+      "assigneeIds": [
+        "me"
+      ],
+      "endDate": "2026-10-12",
+      "visibility": "workspace",
+      "status": "예정",
+      "work": "팀원과 화면 흐름 확인",
+      "createdBy": "me"
+    },
+    {
+      "id": 204,
+      "date": "2026-10-22",
+      "start": "13:00",
+      "end": "14:00",
+      "title": "중간 발표",
+      "workspaceId": 1,
+      "owner": "기태",
+      "kind": "team",
+      "description": "주요 기능과 진행 상황 공유",
+      "assigneeIds": [
+        "gitae"
+      ],
+      "endDate": "2026-10-22",
+      "visibility": "workspace",
+      "status": "예정",
+      "work": "주요 기능과 진행 상황 공유",
+      "createdBy": "gitae"
+    },
+    {
+      "id": 205,
+      "date": "2026-10-07",
+      "start": "11:00",
+      "end": "12:00",
+      "title": "웹 취약점 분석",
+      "workspaceId": 2,
+      "owner": "나",
+      "kind": "mine",
+      "description": "실습 환경 확인",
+      "assigneeIds": [
+        "me"
+      ],
+      "endDate": "2026-10-07",
+      "visibility": "workspace",
+      "status": "예정",
+      "work": "실습 환경 확인",
+      "createdBy": "me"
+    },
+    {
+      "id": 206,
+      "date": "2026-10-10",
+      "start": "10:00",
+      "end": "12:00",
+      "title": "TCP/IP 스터디",
+      "workspaceId": 3,
+      "owner": "나",
+      "kind": "mine",
+      "description": "네트워크 기본 구조 학습",
+      "assigneeIds": [
+        "me"
+      ],
+      "endDate": "2026-10-10",
+      "visibility": "workspace",
+      "status": "예정",
+      "work": "네트워크 기본 구조 학습",
+      "createdBy": "me"
+    },
+    {
+      "id": 207,
+      "date": "2026-10-09",
+      "start": "18:00",
+      "end": "19:00",
+      "title": "CERT-IS 정기 세미나",
+      "workspaceId": null,
+      "owner": "임원진",
+      "kind": "club",
+      "description": "동아리 전체 공개 일정",
+      "public": true,
+      "assigneeIds": [],
+      "endDate": "2026-10-09",
+      "visibility": "club",
+      "status": "예정",
+      "work": "동아리 전체 공개 일정",
+      "createdBy": "me"
+    },
+    {
+      "id": 208,
+      "date": "2026-10-15",
+      "start": "17:00",
+      "end": "18:00",
+      "title": "공개 보안 세션",
+      "workspaceId": null,
+      "owner": "임원진",
+      "kind": "club",
+      "description": "공개 학습 세션",
+      "public": true,
+      "assigneeIds": [],
+      "endDate": "2026-10-15",
+      "visibility": "club",
+      "status": "예정",
+      "work": "공개 학습 세션",
+      "createdBy": "me"
+    },
+    {
+      "id": 209,
+      "date": "2026-10-19",
+      "start": "10:00",
+      "end": "11:00",
+      "title": "화면 연결 확인",
+      "workspaceId": 1,
+      "owner": "나",
+      "kind": "mine",
+      "description": "채팅방과 회의록 이동 확인",
+      "assigneeIds": [
+        "me"
+      ],
+      "endDate": "2026-10-19",
+      "visibility": "workspace",
+      "status": "예정",
+      "work": "채팅방과 회의록 이동 확인",
+      "createdBy": "me"
+    }
+  ],
+  "documentMeta": {
+    "1": {
+      "version": 1,
+      "updatedBy": "me",
+      "updatedAt": "2026-10-06T00:00:00Z",
+      "history": []
+    },
+    "2": {
+      "version": 1,
+      "updatedBy": "me",
+      "updatedAt": "2026-10-06T00:00:00Z",
+      "history": []
+    },
+    "3": {
+      "version": 1,
+      "updatedBy": "me",
+      "updatedAt": "2026-10-06T00:00:00Z",
+      "history": []
+    },
+    "4": {
+      "version": 1,
+      "updatedBy": "me",
+      "updatedAt": "2026-10-06T00:00:00Z",
+      "history": []
+    },
+    "5": {
+      "version": 1,
+      "updatedBy": "minseo",
+      "updatedAt": "2026-10-06T00:00:00Z",
+      "history": []
+    },
+    "6": {
+      "version": 1,
+      "updatedBy": "minseo",
+      "updatedAt": "2026-10-06T00:00:00Z",
+      "history": []
+    },
+    "7": {
+      "version": 1,
+      "updatedBy": "hyelim",
+      "updatedAt": "2026-10-06T00:00:00Z",
+      "history": []
+    },
+    "8": {
+      "version": 1,
+      "updatedBy": "jisu",
+      "updatedAt": "2026-10-06T00:00:00Z",
+      "history": []
+    },
+    "9": {
+      "version": 1,
+      "updatedBy": "doyun",
+      "updatedAt": "2026-10-06T00:00:00Z",
+      "history": []
+    }
+  },
+  "tagGroups": {
+    "1": [
+      {
+        "id": "week-1",
+        "name": "주차",
+        "tags": [
+          {
+            "id": "week-1-0",
+            "name": "1주차"
+          },
+          {
+            "id": "week-1-1",
+            "name": "2주차"
+          },
+          {
+            "id": "week-1-2",
+            "name": "3주차"
+          }
+        ]
+      },
+      {
+        "id": "topic-1",
+        "name": "주제",
+        "tags": [
+          {
+            "id": "topic-1-0",
+            "name": "기획"
+          },
+          {
+            "id": "topic-1-1",
+            "name": "설계"
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "id": "week-2",
+        "name": "주차",
+        "tags": [
+          {
+            "id": "week-2-0",
+            "name": "1주차"
+          },
+          {
+            "id": "week-2-1",
+            "name": "2주차"
+          },
+          {
+            "id": "week-2-2",
+            "name": "3주차"
+          }
+        ]
+      },
+      {
+        "id": "topic-2",
+        "name": "주제",
+        "tags": [
+          {
+            "id": "topic-2-0",
+            "name": "기획"
+          },
+          {
+            "id": "topic-2-1",
+            "name": "설계"
+          }
+        ]
+      }
+    ],
+    "3": [
+      {
+        "id": "week-3",
+        "name": "주차",
+        "tags": [
+          {
+            "id": "week-3-0",
+            "name": "1주차"
+          },
+          {
+            "id": "week-3-1",
+            "name": "2주차"
+          },
+          {
+            "id": "week-3-2",
+            "name": "3주차"
+          }
+        ]
+      },
+      {
+        "id": "topic-3",
+        "name": "주제",
+        "tags": [
+          {
+            "id": "topic-3-0",
+            "name": "기획"
+          },
+          {
+            "id": "topic-3-1",
+            "name": "설계"
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "id": "week-4",
+        "name": "주차",
+        "tags": [
+          {
+            "id": "week-4-0",
+            "name": "1주차"
+          }
+        ]
+      },
+      {
+        "id": "topic-4",
+        "name": "주제",
+        "tags": [
+          {
+            "id": "topic-4-0",
+            "name": "기획"
+          },
+          {
+            "id": "topic-4-1",
+            "name": "설계"
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "id": "week-5",
+        "name": "주차",
+        "tags": [
+          {
+            "id": "week-5-0",
+            "name": "1주차"
+          }
+        ]
+      },
+      {
+        "id": "topic-5",
+        "name": "주제",
+        "tags": [
+          {
+            "id": "topic-5-0",
+            "name": "기획"
+          },
+          {
+            "id": "topic-5-1",
+            "name": "설계"
+          }
+        ]
+      }
+    ]
+  }
+}
