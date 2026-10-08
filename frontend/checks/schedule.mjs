@@ -46,11 +46,15 @@ export async function checkSchedule(tab) {
   await page.domSnapshot();
   assert.deepEqual(JSON.parse(await page.getByLabel('선택한 동작').innerText({})), { kind: 'booking', date, start: '11:30' });
   await page.locator('.reservation-board-wrap').press('End');
+  // 키보드 스크롤 뒤 React가 추가 날짜 행을 반영한 후 확인한다.
+  await page.locator('.reservation-day-row').nth(28).waitFor({ state: 'attached' });
   await page.domSnapshot();
   assert.ok(await page.locator('.reservation-day-row').count() > 28, 'Scrolling loads later dates');
   const sticky = await page.evaluate(() => { const head = document.querySelector('.reservation-time-row').getBoundingClientRect(), board = document.querySelector('.reservation-board-wrap').getBoundingClientRect(); return Math.abs(head.top - board.top) < 2; });
   assert.ok(sticky, 'Times stay visible while dates scroll');
+  const rowsBeforeScroll = await page.locator('.reservation-day-row').count();
   await page.locator('.reservation-board-wrap').press('End');
+  await page.locator('.reservation-day-row').nth(rowsBeforeScroll).waitFor({ state: 'attached' });
   await page.domSnapshot();
   const pinnedMonth = await page.evaluate(() => {
     const head = document.querySelector('.reservation-time-row').getBoundingClientRect();

@@ -79,6 +79,7 @@ export function writeLocal(key: string, value: unknown) {
   catch { throw new Error('브라우저 저장 공간을 사용할 수 없음. 변경 내용은 저장되지 않았음'); }
 }
 export function normalize(raw: unknown): Model {
+  // 이전 시제품의 필드도 읽어야 같은 저장 키를 사용하는 기존 자료를 이어 쓸 수 있다.
   if (!raw || typeof raw !== 'object') throw new Error('저장 자료 형식 오류');
   const m = structuredClone(raw) as Model;
   if (!Array.isArray(m.workspaces) || !Array.isArray(m.rooms) || !Array.isArray(m.bookings) || !m.documents) throw new Error('저장 자료 형식 오류');
@@ -125,7 +126,9 @@ export let loadWarning = '';
 function load() {
   try {
     const raw = localStorage.getItem(STORE);
-    return raw ? normalize(JSON.parse(raw)) : fresh();
+    const next = raw ? normalize(JSON.parse(raw)) : fresh();
+    loadWarning = '';
+    return next;
   } catch { loadWarning = '기존 자료를 읽지 못해 샘플을 표시 중임. 기존 저장 공간은 초기화하지 않았음'; return fresh(); }
 }
 let snapshot = typeof localStorage === 'undefined' ? fresh() : load();
@@ -140,12 +143,25 @@ if (typeof window !== 'undefined') window.addEventListener('storage', e => { if 
 // ponytail: browser-local snapshots only; server transactions replace this adapter when the API exists.
 export function mutate<T>(action: string, s: Session, change: (next: Model) => T): T {
   if (typeof localStorage !== 'undefined') refresh();
+  // 읽기 실패 시 표시한 샘플로 원본을 덮어쓰지 않도록 일반 변경을 차단한다.
+  if (loadWarning) throw new Error('기존 자료를 읽지 못해 변경을 저장할 수 없음. 원본을 복구하거나 명시적으로 샘플 초기화해야 함');
   const next = structuredClone(snapshot), result = change(next);
   next.revision = snapshot.revision + 1;
   next.audit.unshift({ id: id('change'), action, userId: s.userId, at: iso() }); next.audit = next.audit.slice(0, 200);
-  const checked = normalize(next); writeLocal(STORE, checked); publish(checked); return result;
+  const checked = normalize(next);
+  // 저장에 성공한 뒤 구독자에게 알려야 실패한 변경이 화면에 확정되지 않는다.
+  writeLocal(STORE, checked);
+  publish(checked);
+  return result;
 }
-export function resetModel() { const next = fresh(); next.revision = snapshot.revision + 1; writeLocal(STORE, next); publish(next); }
+export function resetModel() {
+  const next = fresh();
+  next.revision = snapshot.revision + 1;
+  // 사용자가 확인한 초기화만 읽기 실패 상태의 원본을 교체할 수 있다.
+  writeLocal(STORE, next);
+  loadWarning = '';
+  publish(next);
+}
 export function requireMember(w: Workspace | undefined, s: Session): asserts w is Workspace {
   if (!writable(w, s)) throw new Error('활동 구성원만 변경 가능함. 보관 활동은 조회 전용임');
 }
@@ -169,6 +185,7 @@ export function saveDocument(rid: Id, body: string, baseVersion: number, s: Sess
     const r = room(m, rid); requireMember(workspace(m, r?.workspaceId), s);
     if (!r) throw new Error('회의록을 찾을 수 없음');
     const meta = m.documentMeta[rid];
+    // 최신 저장본을 확인한 초안만 저장해 다른 사용자의 변경을 보존한다.
     if (meta.version !== baseVersion) throw new Error('다른 사용자가 먼저 저장했음. 최신본과 초안을 비교해야 함');
     meta.history.unshift({ version: meta.version, body: m.documents[rid], updatedBy: meta.updatedBy, updatedAt: meta.updatedAt }); meta.history = meta.history.slice(0, 10);
     m.documents[rid] = body; meta.version++; meta.updatedBy = s.userId; meta.updatedAt = iso();
@@ -185,6 +202,7 @@ export function visibleEvents(m: Model, s: Session, w?: Workspace, mine = false,
 }
 export type CalendarEvent = Event & { bookingId?: Id };
 export function calendarEvents(m: Model, s: Session, w?: Workspace, mine = false, scope = 'mine'): CalendarEvent[] {
+  // 예약을 별도 일정으로 저장하지 않아 변경·취소 시 두 자료가 어긋나지 않는다.
   const bookings = m.bookings.filter(b => b.status !== '취소' && (w ? same(b.workspaceId, w.id) : b.ownerId === s.userId || member(workspace(m, b.workspaceId), s.userId) || s.officer && scope === 'all') && (!mine || b.ownerId === s.userId));
   return [...visibleEvents(m, s, w, mine, scope), ...bookings.map(b => ({
     id: `booking:${b.id}`, bookingId: b.id, workspaceId: b.workspaceId,

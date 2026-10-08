@@ -11,6 +11,7 @@ export default function Survey({ model: m, session: s, prefs: p, setPrefs, open 
   const current = useRef<HTMLElement>(null), result = useRef<HTMLElement>(null), messages = useRef<HTMLDivElement>(null);
   const done = step === surveyQuestions.length, choice = selected === undefined ? answers[step] : selected;
   const ranking = done ? rankSurvey(answers) : [], recommended = ranking.filter(field => field.rank === 1 && field.score > 0);
+  // ponytail: 활동·설문 분류가 달라 이름이 같은 분야만 연결하며, 분류 정책 확정 시 통합한다.
   const activities = m.workspaces.filter(w => !['완료', '보관'].includes(w.status) && ranking.some(field => field.name === w.field && field.score > 0)).sort((a, b) => ranking.find(field => field.name === a.field)!.rank - ranking.find(field => field.name === b.field)!.rank);
   useEffect(() => { (done ? result.current : current.current)?.focus({ preventScroll: true }); if (messages.current) messages.current.scrollTop = messages.current.scrollHeight; }, [step]);
   function move(index: number) { setStep(index); setSelected(undefined); }

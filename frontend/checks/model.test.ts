@@ -1,7 +1,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { rankSurvey, surveyFields, surveyQuestions } from '../src/recommend.ts';
-import { applyForm, calendarEvents, canChat, canView, dashboardDeadlines, checkBooking, fields, fresh, getDraft, getSnapshot, leader, loadPreferences, minutes, mutate, normalize, resetModel, room, saveDocument, setDraft, STORE, UI_STORE, updateMembers, visibleEvents, workspace } from '../src/model.ts';
+import { applyForm, calendarEvents, canChat, canView, dashboardDeadlines, checkBooking, fields, fresh, getDraft, getSnapshot, leader, loadPreferences, loadWarning, minutes, mutate, normalize, resetModel, room, saveDocument, setDraft, STORE, UI_STORE, updateMembers, visibleEvents, workspace } from '../src/model.ts';
 
 const values = new Map<string, string>();
 let unavailable = false;
@@ -160,6 +160,39 @@ test('failed local persistence rolls back the model without destroying the saved
   const before = getSnapshot(); unavailable = true;
   assert.throws(() => saveDocument(1, '실패', before.documentMeta[1].version, me), /저장 공간/);
   assert.equal(getSnapshot(), before); assert.equal(getDraft('me', 1)?.body, '보존');
+});
+
+test('unreadable stored data blocks changes while preserving the original and draft', () => {
+  const before = getSnapshot();
+  setDraft('me', 1, { body: '보존할 초안', baseVersion: 1, at: '' });
+  for (const raw of ['{invalid-json', JSON.stringify({ schemaVersion: 2 })]) {
+    values.set(STORE, raw);
+    assert.throws(() => saveDocument(1, '덮어쓰기', before.documentMeta[1].version, me), /기존 자료/);
+    assert.equal(values.get(STORE), raw);
+    assert.equal(getSnapshot(), before);
+    assert.equal(getDraft('me', 1)?.body, '보존할 초안');
+    assert.ok(loadWarning);
+  }
+  values.set(STORE, JSON.stringify(before));
+  saveDocument(1, '복구 후 저장', before.documentMeta[1].version, me);
+  assert.equal(loadWarning, '');
+  assert.equal(getSnapshot().documents[1], '복구 후 저장');
+});
+
+test('explicit reset clears the read failure only after successfully replacing storage', () => {
+  const raw = '{invalid-json', before = getSnapshot();
+  values.set(STORE, raw);
+  assert.throws(() => mutate('실패 확인', me, () => {}), /기존 자료/);
+  unavailable = true;
+  assert.throws(() => resetModel(), /저장 공간/);
+  assert.equal(values.get(STORE), raw);
+  assert.equal(getSnapshot(), before);
+  assert.ok(loadWarning);
+  unavailable = false;
+  resetModel();
+  assert.equal(loadWarning, '');
+  assert.deepEqual(getSnapshot(), normalize(JSON.parse(values.get(STORE)!)));
+  assert.doesNotThrow(() => saveDocument(1, '초기화 후 저장', 1, me));
 });
 test('officer personal calendar defaults to membership; explicit operational scope still hides private events', () => {
   const m = fresh(); m.events.push({ id: 'private', workspaceId: 4, title: '비공개', date: '2099-01-01', endDate: '2099-01-01', start: '10:00', end: '11:00', visibility: 'private', assigneeIds: ['jisu'], work: '', status: '예정', createdBy: 'jisu' });
