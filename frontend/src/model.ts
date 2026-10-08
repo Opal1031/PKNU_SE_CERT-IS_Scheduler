@@ -1,4 +1,6 @@
 import seed from './seed.json' with { type: 'json' };
+import { isSurveyAnswer, surveyQuestions } from './recommend.ts';
+import type { SurveyAnswer } from './recommend';
 
 export type Id = string | number;
 export type Session = { userId: string; officer: boolean };
@@ -9,6 +11,8 @@ export interface Workspace {
   id: Id; name: string; type: 'project' | 'study'; initial: string; field: string;
   status: string; memberIds: string[]; leaderId: string; createdBy: string;
   goal: string; startDate: string; endDate: string; updatedAt: string;
+  // ponytail: local demo requests; use an authenticated API when server participation is connected.
+  applicantIds?: string[];
   memberNames?: string[]; description?: string; members?: number;
 }
 export interface Message { id: string; authorId: string; createdAt: string; text: string; name?: string; time?: string }
@@ -92,6 +96,7 @@ export function normalize(raw: unknown): Model {
     w.createdBy ||= example?.createdBy || w.leaderId;
     w.goal ??= w.description || ''; w.startDate ||= ''; w.endDate ||= ''; w.updatedAt ||= iso();
     w.members = w.memberIds.length; w.memberNames = w.memberIds.map(name);
+    w.applicantIds = [...new Set((w.applicantIds || []).filter(x => !!uid(x) && !w.memberIds.includes(x)))];
     m.tagGroups[w.id] ||= structuredClone(seed.tagGroups[String(w.id) as keyof typeof seed.tagGroups] || []);
     for (const g of m.tagGroups[w.id]) for (const t of g.tags) t.name ??= t.label || '';
   }
@@ -178,42 +183,67 @@ export function updateMembers(m: Model, w: Workspace, ids: string[], newLeader: 
 export function visibleEvents(m: Model, s: Session, w?: Workspace, mine = false, scope = 'mine') {
   return m.events.filter(e => !e.deleted && (e.visibility !== 'private' || e.assigneeIds.includes(s.userId)) && (w ? same(e.workspaceId, w.id) || e.visibility === 'club' : e.visibility === 'club' || member(workspace(m, e.workspaceId), s.userId) || s.officer && scope === 'all') && (!mine || e.assigneeIds.includes(s.userId)));
 }
+export type CalendarEvent = Event & { bookingId?: Id };
+export function calendarEvents(m: Model, s: Session, w?: Workspace, mine = false, scope = 'mine'): CalendarEvent[] {
+  const bookings = m.bookings.filter(b => b.status !== '취소' && (w ? same(b.workspaceId, w.id) : b.ownerId === s.userId || member(workspace(m, b.workspaceId), s.userId) || s.officer && scope === 'all') && (!mine || b.ownerId === s.userId));
+  return [...visibleEvents(m, s, w, mine, scope), ...bookings.map(b => ({
+    id: `booking:${b.id}`, bookingId: b.id, workspaceId: b.workspaceId,
+    title: `동아리방 예약 · ${workspace(m, b.workspaceId)?.name || '활동'}`,
+    date: b.date, endDate: b.date, start: b.start, end: b.end,
+    visibility: 'workspace', assigneeIds: [b.ownerId], work: b.purpose || '',
+    status: b.status, createdBy: b.ownerId, updatedAt: b.updatedAt
+  }))];
+}
 export interface Draft { body: string; baseVersion: number; at: string }
+export function dashboardDeadlines(m: Model, s: Session, day = today()) {
+  const active = m.workspaces.filter(w => canView(w, s) && !['완료', '보관'].includes(w.status));
+  return [
+    ...active.filter(w => w.endDate).map(w => ({ key: `workspace-${w.id}`, workspaceId: w.id, eventId: undefined as Id | undefined, title: '활동 마감', activity: w.name, date: w.endDate })),
+    ...visibleEvents(m, s, undefined, false, s.officer ? 'all' : 'mine').filter(e => e.status !== '완료' && (e.workspaceId === null || active.some(w => same(w.id, e.workspaceId)))).map(e => ({ key: `event-${e.id}`, workspaceId: e.workspaceId, eventId: e.id, title: e.title, activity: workspace(m, e.workspaceId)?.name || '동아리 전체', date: e.endDate }))
+  ].map(item => ({ ...item, days: Math.round((Date.parse(`${item.date}T00:00:00+09:00`) - Date.parse(`${day}T00:00:00+09:00`)) / 86400000) })).sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title, 'ko'));
+}
 export function getDraft(user: string, rid: Id): Draft | undefined { return readLocal<Record<string, Draft>>(DRAFTS, {})[`${user}:${rid}`]; }
 export function setDraft(user: string, rid: Id, draft?: Draft) {
   const drafts = readLocal<Record<string, Draft>>(DRAFTS, {}), key = `${user}:${rid}`;
   if (draft) drafts[key] = draft; else delete drafts[key]; writeLocal(DRAFTS, drafts);
 }
-export type ModalKind = 'profile' | 'list-filters' | 'calendar-filters' | 'room-sort' | 'workspace-pick' | 'workspace-new' | 'workspace-edit' | 'members' | 'leave' | 'event' | 'event-delete' | 'booking' | 'booking-info' | 'booking-cancel' | 'room' | 'room-settings' | 'room-archive' | 'tags' | 'group-new' | 'group-rename' | 'tag-new' | 'tag-rename' | 'group-delete' | 'tag-delete' | 'document-pick' | 'document-history' | 'reset';
+export type ModalKind = 'workspace-info' | 'workspace-apply' | 'profile' | 'list-filters' | 'calendar-filters' | 'room-sort' | 'workspace-pick' | 'workspace-new' | 'workspace-edit' | 'members' | 'leave' | 'event' | 'event-delete' | 'booking' | 'booking-info' | 'booking-cancel' | 'room' | 'room-settings' | 'room-archive' | 'tags' | 'group-new' | 'group-rename' | 'tag-new' | 'tag-rename' | 'group-delete' | 'tag-delete' | 'document-pick' | 'document-history' | 'reset';
 export interface ModalState { kind: ModalKind; id?: Id; workspaceId?: Id; groupId?: string; date?: string; start?: string }
 export interface Preferences extends Session {
   collapsed: boolean; chatWidth: number; chatWorkspaceId: Id; chatRooms: Record<string, Id>;
   reads: Record<string, string>; messageDrafts: Record<string, string>; scope: string;
   lastHash: string; docMode: string; roomSort: string; roomSortGroup: string;
   calendarMode: string; calendarMine: boolean; calendarScope: string; calendarPins: Record<string, string[]>;
-  aiField: number; aiExperience: number; aiSubmitted: boolean;
+  aiSurveys: Record<string, SurveyAnswer[]>;
   listType: string; listField: string; listStatus: string; listOwner: string; listOrder: string;
 }
 export const defaultPreferences: Preferences = {
   userId: 'me', officer: false, collapsed: false, chatWidth: 300, chatWorkspaceId: 1,
   chatRooms: {}, reads: {}, messageDrafts: {}, scope: 'mine', lastHash: '#/dashboard', docMode: 'split',
   roomSort: 'recent', roomSortGroup: '', calendarMode: 'month', calendarMine: false, calendarScope: 'mine', calendarPins: {},
-  aiField: 0, aiExperience: 0, aiSubmitted: false, listType: 'all', listField: 'all', listStatus: 'active', listOwner: 'all', listOrder: 'recent'
+  aiSurveys: {}, listType: 'all', listField: 'all', listStatus: 'active', listOwner: 'all', listOrder: 'recent'
 };
 export function loadPreferences(): Preferences {
   const p = { ...defaultPreferences, ...readLocal<Partial<Preferences>>(UI_STORE, {}) };
   p.userId = uid(p.userId) || 'me'; p.chatWidth = Math.min(460, Math.max(240, Number(p.chatWidth) || 300));
   p.calendarPins = Object.fromEntries(Object.entries(p.calendarPins && typeof p.calendarPins === 'object' ? p.calendarPins : {}).filter(([user, ids]) => !!uid(user) && Array.isArray(ids)).map(([user, ids]) => [user, [...new Set(ids.filter(id => typeof id === 'string' || typeof id === 'number').map(String))]]));
+  p.aiSurveys = Object.fromEntries(Object.entries(p.aiSurveys && typeof p.aiSurveys === 'object' ? p.aiSurveys : {}).filter(([user, answers]) => !!uid(user) && Array.isArray(answers) && answers.length <= surveyQuestions.length && Array.from(answers).every(isSurveyAnswer)));
   return p;
 }
 export function applyForm(modal: ModalState, f: FormData, s: Session): Id | undefined {
   const get = (key: string) => String(f.get(key) || '').trim();
   const all = (key: string) => f.getAll(key).map(String);
   const kind = modal.kind, target = modal.id;
-  const label: Partial<Record<ModalKind, string>> = { 'workspace-new': '활동 생성', 'workspace-edit': '활동 정보 변경', members: '구성원 및 팀장 변경', leave: '활동 탈퇴', event: '일정 변경', 'event-delete': '일정 삭제', booking: '예약 확정 / 변경', 'booking-cancel': '예약 취소', room: '방 생성 / 변경', 'room-archive': '방 보관', 'group-new': '태그 그룹 생성', 'group-rename': '그룹 이름 변경', 'tag-new': '태그 생성', 'tag-rename': '태그 이름 변경', 'group-delete': '그룹 삭제', 'tag-delete': '태그 삭제' };
+  const label: Partial<Record<ModalKind, string>> = { 'workspace-apply': '참가 신청', 'workspace-new': '활동 생성', 'workspace-edit': '활동 정보 변경', members: '구성원 및 팀장 변경', leave: '활동 탈퇴', event: '일정 변경', 'event-delete': '일정 삭제', booking: '예약 확정 / 변경', 'booking-cancel': '예약 취소', room: '방 생성 / 변경', 'room-archive': '방 보관', 'group-new': '태그 그룹 생성', 'group-rename': '그룹 이름 변경', 'tag-new': '태그 생성', 'tag-rename': '태그 이름 변경', 'group-delete': '그룹 삭제', 'tag-delete': '태그 삭제' };
   return mutate(label[kind] || '관리 변경', s, m => {
     const w = workspace(m, modal.workspaceId || get('workspaceId'));
     switch (kind) {
+      case 'workspace-apply':
+        if (!uid(s.userId) || !w) throw new Error('사용자와 활동을 확인해야 함');
+        if (['완료', '보관'].includes(w.status)) throw new Error('종료된 활동에는 신청할 수 없음');
+        if (member(w, s.userId)) throw new Error('이미 참여 중인 활동임');
+        if (w.applicantIds?.includes(s.userId)) throw new Error('이미 신청한 활동임');
+        (w.applicantIds ||= []).push(s.userId); break;
       case 'workspace-new': {
         const title = get('name'); if (!title) throw new Error('활동 이름을 입력해야 함');
         if (!fields.includes(get('field')) || !['project', 'study'].includes(get('type'))) throw new Error('유형과 분야를 확인해야 함');

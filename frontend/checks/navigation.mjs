@@ -3,12 +3,14 @@ import assert from 'node:assert/strict';
 // Run with the local app's cua_repl tab: await checkNavigation(tab).
 export async function checkNavigation(tab) {
   const page = tab.playwright;
-  for (const label of ['홈', '달력', '예약', 'AI 추천']) {
+  for (const label of ['CERT-IS 홈', '달력', '예약', 'AI 설문']) {
     await page.getByRole('link', { name: label, exact: true }).first().click();
     await page.domSnapshot();
     assert.equal(await page.locator('#chat-sidebar').count(), 0, `${label}: no activity chat`);
     assert.equal(await page.getByRole('link', { name: label, exact: true }).first().getAttribute('aria-current'), 'page');
   }
+  assert.equal(await page.locator('#global-sidebar').getByRole('link', { name: '홈', exact: true }).count(), 0);
+  assert.equal(await page.locator('.brand-logo').evaluate(el => el.complete && el.naturalWidth > 0), true);
   assert.equal(await page.locator('.nav-divider span').count(), 2);
   await page.getByRole('button', { name: '프로젝트 및 스터디 생성', exact: true }).click();
   await page.domSnapshot();
@@ -44,11 +46,11 @@ export async function checkNavigation(tab) {
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'workspace-launcher');
   await page.getByRole('button', { name: '프로젝트 및 스터디', exact: true }).click();
   await page.domSnapshot();
-  await page.getByRole('radio', { name: '웹 보안', exact: true }).click();
+  await page.getByRole('link', { name: '예약', exact: true }).click();
   await page.domSnapshot();
   assert.equal(await page.locator('#modal').count(), 0, 'Clicking outside dismisses the picker');
   assert.equal(await page.locator('#workspace-launcher').getAttribute('aria-expanded'), 'false');
-  assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('name')), 'field', 'Outside input keeps keyboard focus');
+  assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('href')), '#/reservation', 'Outside link keeps keyboard focus');
   await page.getByRole('button', { name: '프로젝트 및 스터디', exact: true }).click();
   await page.domSnapshot();
   const study = page.getByRole('link', { name: '네트워크 보안 · 스터디', exact: true });
@@ -62,7 +64,7 @@ export async function checkNavigation(tab) {
   await page.getByRole('link', { name: '네트워크 보안 · 스터디', exact: true }).click();
   await page.domSnapshot();
   assert.equal(await page.locator('#modal').count(), 0, 'Selecting the current activity still closes the picker');
-  await page.getByRole('link', { name: '홈', exact: true }).click();
+  await page.getByRole('link', { name: 'CERT-IS 홈', exact: true }).click();
   await page.domSnapshot();
   assert.equal(await page.locator('#chat-sidebar').count(), 0);
 }
