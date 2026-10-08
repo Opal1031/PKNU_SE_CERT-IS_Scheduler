@@ -16,4 +16,4 @@ pnpm dev
 
 타입 검사·배포 빌드는 `pnpm build`, 운영 로직 검사는 `pnpm test`로 실행함. 실행법과 검증 내용은 [frontend/README.md](frontend/README.md)에 있음.
 
-설계·이전 시제품 검토 기록은 `docs/frontend/`, 설문 문항·가중치는 `docs/recommend/`에 있음. 실제 인증·API·DB·WebSocket·Gemini는 아직 연결하지 않았음.
+설계·이전 시제품 검토 기록과 [화면별 작업트리](docs/frontend/화면별_작업트리.md)는 `docs/frontend/`, 화면 캡처는 `docs/frontend/screenshots/`, 설문 문항·가중치는 `docs/recommend/`에 있음. 실제 인증·API·DB·WebSocket·Gemini는 아직 연결하지 않았음.
