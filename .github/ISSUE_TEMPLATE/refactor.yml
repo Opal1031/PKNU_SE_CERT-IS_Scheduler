@@ -1,0 +1,37 @@
+name: 리팩터링 제안
+description: 동작은 그대로 두고 코드 구조를 개선합니다.
+title: "[Refac] "
+labels: ["refac"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 대상 영역
+      options:
+        - FE (프론트엔드)
+        - BE (백엔드)
+        - AI (보안 분야 추천)
+        - 공통 설정
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: 현재 구조와 문제점
+      description: 대상 파일·함수와 개선이 필요한 이유를 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: plan
+    attributes:
+      label: 개선 방향과 검증 방법
+      description: 바뀌는 구조와, 동작이 그대로인지 확인할 테스트를 작성해 주세요.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 사전 확인
+      options:
+        - label: 사용자에게 보이는 동작이 바뀌지 않습니다.
+          required: true
