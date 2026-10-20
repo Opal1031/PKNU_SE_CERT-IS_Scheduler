@@ -35,7 +35,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/health", tags=["시스템"], summary="서버·DB 상태 확인")
     def health(db: DB) -> dict[str, str]:
-        db.execute(text("SELECT 1"))
+        db.scalar(text("SELECT 1"))
         return {"status": "ok"}
 
     return app

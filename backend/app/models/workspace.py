@@ -35,7 +35,9 @@ class Workspace(TimestampMixin, Base):
 
     leader: Mapped[User] = relationship(foreign_keys=[leader_id])
     memberships: Mapped[list["WorkspaceMember"]] = relationship(
-        back_populates="workspace", cascade="all, delete-orphan", order_by="WorkspaceMember.joined_at"
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+        order_by="WorkspaceMember.joined_at, WorkspaceMember.user_id",
     )
 
     @property

@@ -74,7 +74,11 @@ chat_room_tags = Table(
 
 
 class Document(Base):
-    """채팅방과 1:1로 연결된 회의록. version으로 동시 수정 충돌을 막는다(낙관적 잠금)."""
+    """채팅방과 1:1로 연결된 회의록.
+
+    저장 API는 요청의 baseVersion과 현재 version이 다르면 409로 거부해
+    다른 사람이 먼저 저장한 내용을 덮어쓰지 않는다(낙관적 잠금).
+    """
 
     __tablename__ = "documents"
 
