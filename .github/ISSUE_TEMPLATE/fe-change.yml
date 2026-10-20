@@ -1,0 +1,35 @@
+name: 화면 기능 제안 (FE)
+description: 화면, 컴포넌트 또는 사용자 흐름의 추가·변경을 제안합니다.
+title: "[FE] "
+labels: ["fe", "feat"]
+body:
+  - type: input
+    id: target
+    attributes:
+      label: 대상 화면
+      placeholder: 홈, 개인 캘린더, 동아리방 예약, 회의록, 채팅, 설정 등
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제 또는 필요성
+      description: 현재 동작과 변경이 필요한 이유를 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 예상 동작
+      description: 사용자 흐름, 화면 구성, 역할(임원진·팀장·팀원)별 차이와 확인 기준을 작성해 주세요.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 사전 확인
+      options:
+        - label: 필요한 API·데이터가 있는지 BE 담당과 확인했습니다.
+          required: true
+        - label: 비밀 정보와 개인정보를 포함하지 않았습니다.
+          required: true
