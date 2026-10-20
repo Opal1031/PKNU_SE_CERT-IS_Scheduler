@@ -1,0 +1,39 @@
+# 로컬에서 MySQL + 백엔드 API를 한 번에 실행한다.
+#   docker compose up --build   →  API 문서 http://127.0.0.1:8000/docs
+# 프론트엔드는 frontend/에서 pnpm dev로 따로 실행한다(http://127.0.0.1:8765).
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: certis
+      MYSQL_USER: certis
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-certis}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-certis-root}
+      TZ: Asia/Seoul
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ucertis", "-p${MYSQL_PASSWORD:-certis}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      DATABASE_URL: mysql+pymysql://certis:${MYSQL_PASSWORD:-certis}@db:3306/certis?charset=utf8mb4
+      JWT_SECRET: ${JWT_SECRET:-dev-only-cert-is-secret-change-me-in-production}
+      CORS_ORIGINS: http://127.0.0.1:8765,http://localhost:8765
+      SEED_PASSWORD: ${SEED_PASSWORD:-certis1234!}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mysql-data:
