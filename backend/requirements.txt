@@ -1,0 +1,9 @@
+fastapi==0.141.1
+# fastapi가 상한 없이 요구하므로 테스트 클라이언트 동작이 바뀌지 않게 고정
+starlette==1.7.0
+uvicorn[standard]==0.54.0
+SQLAlchemy==2.0.55
+PyMySQL==1.1.1
+# MySQL 8 기본 인증(caching_sha2_password)을 PyMySQL로 처리할 때 필요
+cryptography==50.0.1
+PyJWT==2.15.0
