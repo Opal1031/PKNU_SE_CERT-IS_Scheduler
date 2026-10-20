@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>활동 이름 표시 확인</title>
+<div id="root"></div>
+<script type="module">
+  import React, { useState } from 'react';
+  import { createRoot } from 'react-dom/client';
+  import Dialog from '../src/Dialog.tsx';
+  import seed from '../src/seed.json';
+  import '../src/styles.css';
+  const names = ['짧은 이름', 'CERT-IS 통합 관리 및 네트워크 보안 취약점 분석 프로젝트', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+  const model = { ...seed, workspaces: names.map((name, i) => ({ ...seed.workspaces[0], id: `name-check-${i}`, name, type: 'project', memberIds: ['me'] })) };
+  function Check() {
+    const [open, setOpen] = useState(false);
+    return React.createElement('div', { className: 'app', style: { '--rail': '58px' } },
+      React.createElement('button', { id: 'workspace-launcher', style: { marginTop: '64px', width: '58px' }, onClick: () => setOpen(true) }, '이름 확인'),
+      open && React.createElement(Dialog, { model, session: { userId: 'me', officer: false }, prefs: {}, state: { kind: 'workspace-pick' }, close: () => setOpen(false) })
+    );
+  }
+  createRoot(document.getElementById('root')).render(React.createElement(Check));
+</script>
+</html>
