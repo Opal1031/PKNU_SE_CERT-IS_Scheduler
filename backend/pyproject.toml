@@ -3,6 +3,20 @@ name = "cert-is-backend"
 version = "0.1.0"
 description = "CERT-IS 통합 관리 시스템 백엔드 (FastAPI)"
 requires-python = ">=3.11"
+# Vercel은 이 목록으로 의존성을 설치한다. Docker·CI가 쓰는 requirements.txt와 같게 유지한다(tests/test_config.py가 확인).
+dependencies = [
+    "fastapi==0.141.1",
+    "starlette==1.7.0",
+    "uvicorn[standard]==0.54.0",
+    "SQLAlchemy==2.0.55",
+    "PyMySQL==1.1.1",
+    "cryptography==50.0.1",
+    "PyJWT==2.15.0",
+]
+
+# Vercel 배포: 빌드할 때 테이블 생성·샘플 입력(이미 있으면 건너뜀)을 먼저 실행한다.
+[tool.vercel.scripts]
+build = "python -m app.seed"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

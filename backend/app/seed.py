@@ -2,7 +2,7 @@
 
 실행: python -m app.seed
 이미 사용자가 있으면 샘플을 다시 넣지 않는다(여러 번 실행해도 안전).
-샘플 활동은 프론트엔드 src/seed.json의 활동·구성원 구성을 그대로 옮겼다.
+샘플 활동은 프론트엔드 src/seed.json의 활동을 옮기고, 구성원은 실제 팀원 계정으로 정리했다.
 """
 
 import os
@@ -10,6 +10,7 @@ import os
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.security import hash_password
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
@@ -17,16 +18,13 @@ from app.models import User, Workspace, WorkspaceMember
 
 DEFAULT_PASSWORD = "certis1234!"
 
-# (아이디, 표시 이름, 역할) — 프론트 데모 사용자 '나'(me)는 demo 계정으로 옮김
+# (아이디, 표시 이름, 역할) — 운영진 계정과 팀원 계정
 DEMO_USERS = [
     ("admin", "운영진", "officer"),
-    ("demo", "데모 사용자", "member"),
     ("gitae", "기태", "member"),
     ("minseo", "민서", "member"),
     ("hyelim", "혜림", "member"),
-    ("jisu", "지수", "member"),
-    ("doyun", "도윤", "member"),
-    ("subin", "수빈", "member"),
+    ("yeonwoo", "연우", "member"),
 ]
 
 # (유형, 이름, 약칭, 분야, 목표, 팀장, 구성원)
@@ -37,10 +35,10 @@ DEMO_WORKSPACES = [
         "CI",
         "웹 보안",
         "동아리 운영을 하나의 공간으로",
-        "demo",
-        ["demo", "gitae", "minseo", "hyelim"],
+        "minseo",
+        ["minseo", "gitae", "hyelim", "yeonwoo"],
     ),
-    ("project", "웹 취약점 연구", "WS", "웹 보안", "웹 취약점 분석과 실습", "minseo", ["demo", "minseo", "gitae"]),
+    ("project", "웹 취약점 연구", "WS", "웹 보안", "웹 취약점 분석과 실습", "minseo", ["minseo", "gitae"]),
     (
         "study",
         "네트워크 보안",
@@ -48,18 +46,10 @@ DEMO_WORKSPACES = [
         "네트워크",
         "네트워크 기본기와 보안 학습",
         "hyelim",
-        ["demo", "gitae", "minseo", "hyelim"],
+        ["gitae", "minseo", "hyelim"],
     ),
-    (
-        "project",
-        "침해 대응 연구",
-        "IR",
-        "웹 보안",
-        "로그 분석과 침해 대응 시나리오 연구",
-        "jisu",
-        ["jisu", "doyun", "subin"],
-    ),
-    ("study", "암호학 기초", "CR", "암호학", "암호 알고리즘과 기초 수학 학습", "doyun", ["jisu", "doyun"]),
+    ("project", "침해 대응 연구", "IR", "웹 보안", "로그 분석과 침해 대응 시나리오 연구", "yeonwoo", ["yeonwoo"]),
+    ("study", "암호학 기초", "CR", "암호학", "암호 알고리즘과 기초 수학 학습", "yeonwoo", ["yeonwoo"]),
 ]
 
 
@@ -91,6 +81,7 @@ def seed(db: Session, password: str = DEFAULT_PASSWORD) -> bool:
 
 
 def main() -> None:
+    settings.check()  # 배포 빌드에서 DB 주소·비밀키가 빠졌으면 여기서 멈춘다.
     Base.metadata.create_all(engine)
     password = os.getenv("SEED_PASSWORD", DEFAULT_PASSWORD)
     with SessionLocal() as db:

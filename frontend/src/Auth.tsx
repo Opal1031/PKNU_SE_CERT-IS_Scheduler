@@ -78,7 +78,7 @@ export function LoginPage({ userId, restricted, signIn, demoLogin }: { userId: s
       <div className="login-help"><p>계정 발급 및 비밀번호 문의는 동아리 운영진에게 연락해주세요.</p></div>
       {demoLogin && <section className="demo-login" aria-labelledby="demo-title">
         <h2 id="demo-title">화면 미리보기</h2>
-        <p>개발 서버에서만 보이는 데모예요. 백엔드 없이 샘플 사용자로 로그인 상태와 활동 화면을 확인할 수 있어요.</p>
+        <p>백엔드 없이 샘플 사용자로 로그인 상태와 활동 화면을 확인하는 데모예요. 변경 내용은 이 브라우저에만 저장돼요.</p>
         <Select label="데모 사용자" items={users.map(user => [user.id, user.name])} value={demoUser} onChange={event => setDemoUser(event.target.value)} />
         <button className="button" type="button" onClick={() => demoLogin(demoUser)}>데모 로그인</button>
       </section>}
