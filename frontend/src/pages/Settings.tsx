@@ -1,9 +1,12 @@
 import { DEMO_TOOLS } from '../api';
+import type { ApiUser } from '../api';
 import { id, iso, mutate, name, requireMember, room, same, stamp, workspace } from '../model';
 import { Heading } from '../ui';
 import type { ViewProps } from '../ui';
+import { AccountAdmin, MyAccount } from './Accounts';
 
-export function Settings({ model, session, prefs, setPrefs, open, notify }: ViewProps) {
+// account: 서버 계정으로 로그인한 경우의 계정 정보(데모 로그인이면 null)
+export function Settings({ model, session, prefs, setPrefs, open, notify, account, refreshAccount }: ViewProps & { account: ApiUser | null; refreshAccount: () => void }) {
   function simulate() {
     try {
       const activity = workspace(model, prefs.chatWorkspaceId);
@@ -23,6 +26,8 @@ export function Settings({ model, session, prefs, setPrefs, open, notify }: View
   }
   return <>
     <Heading title="설정" />
+    {account && <MyAccount account={account} notify={notify} />}
+    {account?.officer && <AccountAdmin me={account} notify={notify} onSelfChange={refreshAccount} />}
     {DEMO_TOOLS && <section className="settings-block">
       <div className="settings-row">
         <div>

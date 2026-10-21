@@ -9,8 +9,8 @@ import { Dashboard } from './pages/Dashboard';
 import { Reservations } from './pages/Reservations';
 import { Settings } from './pages/Settings';
 import Survey from './Survey';
-import { DEMO_TOOLS, fetchMe, getToken, login as apiLogin, logout as apiLogout } from './api';
-import type { ApiUser } from './api';
+import { DEMO_TOOLS, expireSession, fetchMe, getToken, login as apiLogin, logout as apiLogout, SESSION_EXPIRED, tokenExpiresAt } from './api';
+import type { ApiError, ApiUser } from './api';
 import type { ModalState, Room } from './model';
 import { canView, getDraft, getSnapshot, iso, loadPreferences, loadWarning, localUserId, member, role, room, same, setDraft, subscribe, UI_STORE, uid, url, workspace, writeLocal } from './model';
 import type { Preferences } from './model';
@@ -29,6 +29,8 @@ export default function App() {
   const [prefs, updatePrefs] = useState(loadPreferences), [hash, setHash] = useState(() => location.hash || prefs.lastHash);
   // 저장된 토큰이 있으면 서버 확인(/api/auth/me)이 끝날 때까지 로그인 여부를 정하지 않는다.
   const [loggedIn, setLoggedIn] = useState(() => !getToken() && demoActive()), [checking, setChecking] = useState(() => !!getToken());
+  // 서버 계정으로 로그인했을 때의 계정 정보. 데모 로그인이면 null이다.
+  const [account, setAccount] = useState<ApiUser | null>(null);
   const [modal, open] = useState<ModalState | null>(null), [toast, setToast] = useState(''), [quoteSignal, quoted] = useState(0);
   const main = useRef<HTMLElement>(null), lastWorkspace = useRef<string | undefined>(undefined), timer = useRef<number | undefined>(undefined), dragging = useRef<{ x: number; width: number } | null>(null);
   const setPrefs = useCallback((patch: Partial<Preferences>) => updatePrefs(old => ({ ...old, ...patch })), []);
@@ -64,12 +66,32 @@ export default function App() {
   useEffect(() => {
     if (!checking) return;
     // 새로고침 후에도 서버가 토큰을 인정할 때만 로그인 상태를 복원한다. 역할도 서버 값으로 다시 맞춘다.
-    fetchMe().then(enter).catch((error: Error) => { apiLogout(); notify(error.message); }).finally(() => setChecking(false));
+    // 401(만료·비활성)은 아래 세션 만료 처리가 안내하므로 그 밖의 오류(서버 연결 실패 등)만 알린다.
+    fetchMe().then(enter).catch((error: ApiError) => { apiLogout(); if (error.status !== 401) notify(error.message); }).finally(() => setChecking(false));
   }, []);
+  useEffect(() => {
+    // 서버가 토큰을 거절하면(만료·위조·계정 비활성화) 화면도 로그아웃 상태로 돌린다.
+    const expired = () => {
+      setAccount(null); setLoggedIn(false); open(null); lastWorkspace.current = undefined;
+      setPrefs({ officer: false }); location.hash = '#/login'; notify('로그인이 만료됐어요. 다시 로그인해주세요.');
+    };
+    window.addEventListener(SESSION_EXPIRED, expired);
+    return () => window.removeEventListener(SESSION_EXPIRED, expired);
+  }, [notify, setPrefs]);
+  useEffect(() => {
+    // 토큰 유효 시간(12시간)이 지나면 서버에 요청하지 않아도 로그아웃한다.
+    const expiresAt = account && tokenExpiresAt(getToken());
+    if (!expiresAt) return;
+    const timeout = window.setTimeout(expireSession, Math.max(0, expiresAt - Date.now()));
+    return () => clearTimeout(timeout);
+  }, [account]);
   function enter(user: ApiUser) {
+    setAccount(user);
     setPrefs({ userId: localUserId(user), officer: user.officer, scope: 'mine' });
     setLoggedIn(true);
   }
+  // 임원진이 자기 계정 정보를 바꾸면 서버 값으로 다시 맞춘다.
+  const refreshAccount = () => { fetchMe().then(enter).catch((error: ApiError) => { if (error.status !== 401) notify(error.message); }); };
   async function signIn(username: string, password: string) {
     const user = await apiLogin(username, password);
     try { sessionStorage.removeItem(DEMO_SESSION); } catch { /* 데모 상태 없음 */ }
@@ -79,7 +101,7 @@ export default function App() {
     if (!uid(userId)) { notify('데모 사용자를 선택해주세요.'); return; }
     try { sessionStorage.setItem(DEMO_SESSION, 'active'); }
     catch { notify('브라우저 세션을 저장할 수 없어요. 저장 설정을 확인해주세요.'); return; }
-    apiLogout();
+    apiLogout(); setAccount(null);
     setPrefs({ userId, officer: false, scope: 'mine' });
     setLoggedIn(true); open(null); location.hash = '#/dashboard'; notify('데모 로그인 상태로 전환했어요.');
   }
@@ -87,7 +109,7 @@ export default function App() {
     apiLogout();
     try { sessionStorage.removeItem(DEMO_SESSION); }
     catch { notify('로그아웃 상태를 저장할 수 없어요. 저장 설정을 확인해주세요.'); return; }
-    setLoggedIn(false); open(null); lastWorkspace.current = undefined;
+    setAccount(null); setLoggedIn(false); open(null); lastWorkspace.current = undefined;
     setPrefs({ officer: false }); location.hash = '#/dashboard'; notify('로그아웃했어요.');
   }
   const common = { model, session, prefs, setPrefs, open: (state: ModalState) => open(state), notify };
@@ -135,7 +157,7 @@ export default function App() {
       case 'calendar': page = <Calendar {...common} />; break;
       case 'reservation': page = <Reservations {...common} />; break;
       case 'ai': page = <Survey key={session.userId} {...common} />; break;
-      case 'settings': page = <Settings {...common} />; break;
+      case 'settings': page = <Settings {...common} account={account} refreshAccount={refreshAccount} />; break;
       default: page = <Dashboard {...common} logout={logout} />;
     }
   }

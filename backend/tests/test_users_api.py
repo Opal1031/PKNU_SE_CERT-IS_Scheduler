@@ -52,6 +52,24 @@ def test_officer_cannot_demote_or_disable_self(client, people):
     assert client.patch(f"/api/admin/users/{me}", json={"name": "운영진"}, headers=admin).status_code == 200
 
 
+def test_officer_resets_forgotten_password(client, people):
+    admin = login(client, "officer")
+    url = f"/api/admin/users/{people['bob'].id}/password"
+    assert client.put(url, json={"newPassword": "reset-pass1"}, headers=admin).status_code == 204
+    assert client.post("/api/auth/login", json={"username": "bob", "password": PASSWORD}).status_code == 401
+    assert client.post("/api/auth/login", json={"username": "bob", "password": "reset-pass1"}).status_code == 200
+
+
+def test_password_reset_rules(client, people):
+    admin, alice = login(client, "officer"), login(client, "alice")
+    url = f"/api/admin/users/{people['bob'].id}/password"
+    assert client.put(url, json={"newPassword": "reset-pass1"}, headers=alice).status_code == 403
+    assert client.put(url, json={"newPassword": "reset-pass1"}).status_code == 401
+    assert client.put(url, json={"newPassword": "short"}, headers=admin).status_code == 422
+    missing = client.put("/api/admin/users/9999/password", json={"newPassword": "reset-pass1"}, headers=admin)
+    assert missing.status_code == 404
+
+
 def test_update_unknown_account(client, people):
     admin = login(client, "officer")
     assert client.patch("/api/admin/users/9999", json={"name": "x"}, headers=admin).status_code == 404

@@ -47,6 +47,12 @@ class UserUpdate(CamelModel):
     is_active: bool | None = None
 
 
+class PasswordReset(CamelModel):
+    """임원진이 비밀번호를 잊은 부원에게 새 비밀번호를 정해 줄 때 사용."""
+
+    new_password: Password
+
+
 class PasswordChange(CamelModel):
     current_password: Annotated[str, Field(max_length=128)]
     new_password: Password

@@ -9,7 +9,7 @@ from app.api.deps import DB, Officer
 from app.core.security import hash_password
 from app.models import AuditLog, User
 from app.schemas.common import ErrorOut
-from app.schemas.user import UserCreate, UserOut, UserUpdate
+from app.schemas.user import PasswordReset, UserCreate, UserOut, UserUpdate
 
 router = APIRouter(
     prefix="/api/admin/users",
@@ -20,6 +20,13 @@ router = APIRouter(
 
 def _audit(db: Session, actor: User, action: str, target: User) -> None:
     db.add(AuditLog(user_id=actor.id, action=action, target_type="user", target_id=str(target.id)))
+
+
+def _account(db: Session, user_id: int) -> User:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="계정을 찾을 수 없음")
+    return user
 
 
 @router.get("", response_model=list[UserOut], summary="전체 계정 목록(비활성 포함)")
@@ -57,9 +64,7 @@ def create_account(body: UserCreate, db: DB, officer: Officer) -> User:
     responses={status.HTTP_400_BAD_REQUEST: {"model": ErrorOut}, status.HTTP_404_NOT_FOUND: {"model": ErrorOut}},
 )
 def update_account(user_id: int, body: UserUpdate, db: DB, officer: Officer) -> User:
-    user = db.get(User, user_id)
-    if user is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="계정을 찾을 수 없음")
+    user = _account(db, user_id)
     changes = body.model_dump(exclude_unset=True)
     # 마지막 임원이 스스로 권한을 내려놓아 아무도 관리할 수 없게 되는 상황을 막는다.
     if user.id == officer.id and (changes.get("role") == "member" or changes.get("is_active") is False):
@@ -72,3 +77,17 @@ def update_account(user_id: int, body: UserUpdate, db: DB, officer: Officer) -> 
     _audit(db, officer, "계정 변경", user)
     db.commit()
     return user
+
+
+@router.put(
+    "/{user_id}/password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="비밀번호 초기화",
+    responses={status.HTTP_404_NOT_FOUND: {"model": ErrorOut}},
+)
+def reset_password(user_id: int, body: PasswordReset, db: DB, officer: Officer) -> None:
+    """비밀번호를 잊은 부원에게 임원진이 새 비밀번호를 정해 준다(로그인 화면 안내: 비밀번호 문의는 운영진에게)."""
+    user = _account(db, user_id)
+    user.password_hash = hash_password(body.new_password)
+    _audit(db, officer, "비밀번호 초기화", user)
+    db.commit()
