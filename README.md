@@ -109,7 +109,7 @@ gantt
 | 2.2 | API 명세 설계 | BE | 6–7 | ✅ 완료 | [API 명세](docs/backend/API.md) |
 | 2.3 | 화면 설계 (와이어프레임) | FE | 6–7 | ✅ 완료 | [화면별 작업트리](docs/frontend/화면별_작업트리.md) |
 | 3.1 | GitHub 레포·브랜치 전략 | BE | 6 | ✅ 완료 | [협업 규칙](CONTRIBUTING.md), 이슈·PR 템플릿, 라벨 |
-| 3.2 | Docker·GitHub Actions CI/CD | BE | 7–8 | 🔄 진행 중 | CI 완료, 자동 배포는 서버 확정 후 |
+| 3.2 | Docker·GitHub Actions CI/CD | BE | 7–8 | 🔄 진행 중 | CI 완료, 프론트 Vercel 자동 배포, 백엔드 배포는 서버 확정 후 |
 | 4.1 | 로그인·권한 관리 | BE | 7–8 | 🔄 진행 중 | API 완료, 화면 연동 남음 |
 | 4.2 | 공통 레이아웃 | FE | 7–8 | ✅ 완료 | `frontend/src/App.tsx` |
 | 5.1 | 프로젝트 등록·조회·필터 API | PM | 9–10 | ⏳ 예정 | 조회 API 일부 선구현 |
@@ -204,6 +204,11 @@ pnpm dev
 주소: http://127.0.0.1:8765/#/dashboard
 
 검사·빌드 방법과 코드 위치는 [frontend/README.md](frontend/README.md)에 있습니다.
+
+### 배포
+
+- **프론트엔드:** Vercel이 저장소의 `frontend/` 폴더와 연결되어 있어 `main`에 merge되면 운영 사이트에, PR마다 미리보기 주소에 자동 배포합니다. 빌드 설정은 [frontend/vercel.json](frontend/vercel.json)에 있습니다.
+- **백엔드:** Vercel에는 프론트엔드 정적 파일만 올리므로 백엔드는 별도 서버에 배포해야 합니다(WBS 8.3). 그전까지는 Vercel 환경 변수 `VITE_DEMO_TOOLS=true`로 빌드해 데모 로그인으로 동작합니다. 백엔드 주소가 생기면 `VITE_API_URL`을 넣고 `VITE_DEMO_TOOLS`를 지운 뒤 다시 배포합니다.
 
 ## 협업 방식
 
