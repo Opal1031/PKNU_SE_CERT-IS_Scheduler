@@ -90,7 +90,7 @@ backend/app
 
 | Vercel 환경 변수 | 값 |
 |---|---|
-| `DATABASE_URL` | Aiven 콘솔의 Service URI 그대로(`mysql://…?ssl-mode=REQUIRED`). 서버가 PyMySQL 형식으로 바꾸고 TLS로 접속함 |
+| `DATABASE_URL` | Aiven 콘솔의 Service URI에서 DB 이름(`/defaultdb`)만 `/certis`로 바꾼 값(`mysql://…/certis?ssl-mode=REQUIRED`). 서버가 PyMySQL 형식으로 바꾸고 TLS로 접속함 |
 | `DATABASE_SSL_CA` | Aiven 콘솔의 CA certificate(PEM) 내용. DB 서버 인증서 확인에 사용 |
 | `JWT_SECRET` | 32자 이상 무작위 값: `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
 | `APP_ENV` | `production` |

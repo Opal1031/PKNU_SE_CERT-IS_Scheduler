@@ -213,7 +213,7 @@ pnpm dev
 - **구성:** Vercel 한 프로젝트에 프론트엔드와 백엔드를 함께 올립니다([vercel.json](vercel.json)의 Services 설정). `/api/…`, `/docs`는 FastAPI 백엔드로, 나머지 주소는 React 앱으로 연결되어 같은 주소를 쓰므로 CORS 설정이 필요 없습니다.
 - **DB:** Aiven 무료 MySQL을 사용합니다. 한동안 쓰지 않으면 꺼질 수 있으며, Aiven 콘솔에서 다시 켭니다.
 - **자동 배포:** `main`에 merge되면 운영 주소에, PR마다 미리보기 주소에 배포됩니다. 백엔드는 빌드할 때 `python -m app.seed`로 테이블과 샘플 계정을 만듭니다(이미 있으면 건너뜀).
-- **환경 변수(Vercel):** `DATABASE_URL`(Aiven Service URI 그대로), `DATABASE_SSL_CA`(Aiven CA 인증서), `JWT_SECRET`, `APP_ENV=production`. 자세한 내용은 [backend/README.md](backend/README.md#배포-vercel--aiven)에 있습니다.
+- **환경 변수(Vercel):** `DATABASE_URL`(Aiven Service URI, DB 이름 `certis`), `DATABASE_SSL_CA`(Aiven CA 인증서), `JWT_SECRET`, `APP_ENV=production`. 자세한 내용은 [backend/README.md](backend/README.md#배포-vercel--aiven)에 있습니다.
 
 ## 협업 방식
 
