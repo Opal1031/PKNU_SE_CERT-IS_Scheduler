@@ -109,7 +109,7 @@ gantt
 | 2.2 | API 명세 설계 | BE | 6–7 | ✅ 완료 | [API 명세](docs/backend/API.md) |
 | 2.3 | 화면 설계 (와이어프레임) | FE | 6–7 | ✅ 완료 | [화면별 작업트리](docs/frontend/화면별_작업트리.md) |
 | 3.1 | GitHub 레포·브랜치 전략 | BE | 6 | ✅ 완료 | [협업 규칙](CONTRIBUTING.md), 이슈·PR 템플릿, 라벨 |
-| 3.2 | Docker·GitHub Actions CI/CD | BE | 7–8 | 🔄 진행 중 | CI 완료, 프론트 Vercel 자동 배포, 백엔드 배포는 서버 확정 후 |
+| 3.2 | Docker·GitHub Actions CI/CD | BE | 7–8 | 🔄 진행 중 | CI 완료, Vercel 자동 배포(프론트·백엔드), Aiven MySQL |
 | 4.1 | 로그인·권한 관리 | BE | 7–8 | 🔄 진행 중 | API 완료, 화면 연동 남음 |
 | 4.2 | 공통 레이아웃 | FE | 7–8 | ✅ 완료 | `frontend/src/App.tsx` |
 | 5.1 | 프로젝트 등록·조회·필터 API | PM | 9–10 | ⏳ 예정 | 조회 API 일부 선구현 |
@@ -173,6 +173,7 @@ flowchart LR
 │  └─ recommend/         AI 설문 문항·분야 가중치
 ├─ assets/               로고
 ├─ docker-compose.yml    MySQL + 백엔드 API 로컬 실행
+├─ vercel.json           Vercel 배포 설정 (프론트엔드·백엔드 Services)
 ├─ .github/              CI 워크플로, 이슈·PR 템플릿
 └─ CONTRIBUTING.md       브랜치·PR·커밋 규칙
 ```
@@ -207,8 +208,12 @@ pnpm dev
 
 ### 배포
 
-- **프론트엔드:** Vercel이 저장소의 `frontend/` 폴더와 연결되어 있어 `main`에 merge되면 운영 사이트에, PR마다 미리보기 주소에 자동 배포합니다. 빌드 설정은 [frontend/vercel.json](frontend/vercel.json)에 있습니다.
-- **백엔드:** Vercel에는 프론트엔드 정적 파일만 올리므로 백엔드는 별도 서버에 배포해야 합니다(WBS 8.3). 그전까지는 Vercel 환경 변수 `VITE_DEMO_TOOLS=true`로 빌드해 데모 로그인으로 동작합니다. 백엔드 주소가 생기면 `VITE_API_URL`을 넣고 `VITE_DEMO_TOOLS`를 지운 뒤 다시 배포합니다.
+주소: https://cert-is.vercel.app (API 문서: https://cert-is.vercel.app/docs)
+
+- **구성:** Vercel 한 프로젝트에 프론트엔드와 백엔드를 함께 올립니다([vercel.json](vercel.json)의 Services 설정). `/api/…`, `/docs`는 FastAPI 백엔드로, 나머지 주소는 React 앱으로 연결되어 같은 주소를 쓰므로 CORS 설정이 필요 없습니다.
+- **DB:** Aiven 무료 MySQL을 사용합니다. 한동안 쓰지 않으면 꺼질 수 있으며, Aiven 콘솔에서 다시 켭니다.
+- **자동 배포:** `main`에 merge되면 운영 주소에, PR마다 미리보기 주소에 배포됩니다. 백엔드는 빌드할 때 `python -m app.seed`로 테이블과 샘플 계정을 만듭니다(이미 있으면 건너뜀).
+- **환경 변수(Vercel):** `DATABASE_URL`(Aiven Service URI 그대로), `DATABASE_SSL_CA`(Aiven CA 인증서), `JWT_SECRET`, `APP_ENV=production`. 자세한 내용은 [backend/README.md](backend/README.md#배포-vercel--aiven)에 있습니다.
 
 ## 협업 방식
 

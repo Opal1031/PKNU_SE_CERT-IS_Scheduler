@@ -25,7 +25,7 @@ pnpm preview
 
 `preview`는 빌드 결과 확인용임. `dev`와 같은 포트를 사용하므로 동시에 실행하지 않음. 빌드 결과는 `dist/`에 생성됨. 배포 시 이 폴더를 정적 호스팅하면 됨.
 
-Vercel 배포는 이 폴더를 루트 디렉터리로 사용하며, `vercel.json` 설정(pnpm 11 설치·빌드)으로 `dist/`를 올림. 백엔드가 배포되기 전까지는 Vercel 환경 변수 `VITE_DEMO_TOOLS=true`로 빌드해 배포 사이트에서도 데모 로그인을 보여 줌.
+Vercel 배포는 저장소 루트 `vercel.json`의 frontend 서비스 설정(pnpm 11 설치·빌드)으로 `dist/`를 올림. 배포 빌드는 `VITE_API_URL`이 없으면 같은 사이트 주소의 `/api`를 호출함(백엔드와 같은 Vercel 프로젝트). 백엔드 없이 화면만 배포할 때는 환경 변수 `VITE_DEMO_TOOLS=true`로 빌드하면 데모 로그인을 보여 줌.
 
 ## 코드 위치
 
