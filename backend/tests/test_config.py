@@ -33,3 +33,15 @@ def test_engine_uses_pymysql_without_ssl_mode_argument():
     engine = make_engine("mysql://u:p@h:3306/d?ssl-mode=REQUIRED")
     assert engine.url.drivername == "mysql+pymysql"
     assert dict(engine.url.query) == {"charset": "utf8mb4"}
+
+
+def test_pyproject_dependencies_match_requirements():
+    """Vercel(pyproject.toml)과 Docker·CI(requirements.txt)가 같은 버전을 설치해야 한다."""
+    import tomllib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    declared = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]["dependencies"]
+    lines = (root / "requirements.txt").read_text(encoding="utf-8").splitlines()
+    required = [line.strip() for line in lines if line.strip() and not line.startswith("#")]
+    assert sorted(declared) == sorted(required)
