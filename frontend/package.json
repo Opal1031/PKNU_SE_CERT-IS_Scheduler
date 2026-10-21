@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 8765 --strictPort",
     "check": "tsc --noEmit",
-    "test": "node --test checks/model.test.ts"
+    "test": "node --test checks/model.test.ts checks/api.test.ts"
   },
   "dependencies": {"react": "^19.0.0", "react-dom": "^19.0.0"},
   "devDependencies": {

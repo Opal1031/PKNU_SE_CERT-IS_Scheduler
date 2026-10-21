@@ -5,10 +5,13 @@ export const API_URL = (import.meta.env?.VITE_API_URL ?? (import.meta.env?.DEV ?
 // 백엔드 없이 올리는 데모 배포(VITE_DEMO_TOOLS=true, Vercel)에서만 보여 준다.
 export const DEMO_TOOLS = (import.meta.env?.DEV ?? false) || import.meta.env?.VITE_DEMO_TOOLS === 'true';
 
+export type Role = 'officer' | 'member';
 export interface ApiUser {
   id: number; username: string; name: string;
-  role: 'officer' | 'member'; officer: boolean; isActive: boolean; createdAt: string;
+  role: Role; officer: boolean; isActive: boolean; createdAt: string;
 }
+// 토큰이 만료·위조됐거나 계정이 비활성화되면 서버가 401을 준다. 화면은 이 이벤트를 받아 로그아웃 상태로 바꾼다.
+export const SESSION_EXPIRED = 'cert-is:session-expired';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -36,6 +39,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response;
   try { response = await fetch(`${API_URL}${path}`, { ...init, headers }); }
   catch { throw new ApiError('서버에 연결할 수 없어요. 백엔드가 실행 중인지 확인해주세요.', 0); }
+  if (response.status === 401 && token && path !== '/api/auth/login') expireSession();
   if (response.status === 204) return undefined as T;
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
@@ -56,3 +60,31 @@ export const fetchMe = () => request<ApiUser>('/api/auth/me');
 
 // JWT는 서버에 로그인 상태가 없으므로 토큰을 지우면 로그아웃이다.
 export function logout() { setToken(null); }
+
+export function expireSession() {
+  setToken(null);
+  globalThis.dispatchEvent?.(new Event(SESSION_EXPIRED));
+}
+
+// 토큰 본문(payload)의 만료 시각(exp, 초)을 밀리초로 돌려준다. 읽을 수 없으면 null.
+export function tokenExpiresAt(token: string | null): number | null {
+  const payload = token?.split('.')[1];
+  if (!payload) return null;
+  try {
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=');
+    const exp: unknown = JSON.parse(atob(base64)).exp;
+    return typeof exp === 'number' ? exp * 1000 : null;
+  } catch { return null; }
+}
+
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  request<void>('/api/users/me/password', { method: 'PATCH', body: JSON.stringify({ currentPassword, newPassword }) });
+
+// 임원진 전용 계정 관리. 회원가입 대신 임원진이 계정을 발급한다.
+export const listAccounts = () => request<ApiUser[]>('/api/admin/users');
+export const createAccount = (account: { username: string; name: string; password: string; role: Role }) =>
+  request<ApiUser>('/api/admin/users', { method: 'POST', body: JSON.stringify(account) });
+export const updateAccount = (id: number, changes: Partial<Pick<ApiUser, 'name' | 'role' | 'isActive'>>) =>
+  request<ApiUser>(`/api/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(changes) });
+export const resetPassword = (id: number, newPassword: string) =>
+  request<void>(`/api/admin/users/${id}/password`, { method: 'PUT', body: JSON.stringify({ newPassword }) });
