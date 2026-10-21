@@ -1,0 +1,35 @@
+from app.core.config import _pem, normalize_database_url
+
+
+def test_hosted_mysql_uri_becomes_pymysql_with_tls():
+    url, tls = normalize_database_url("mysql://avnadmin:p%40ss@db.example.com:12345/defaultdb?ssl-mode=REQUIRED")
+    assert tls is True
+    assert url == "mysql+pymysql://avnadmin:p%40ss@db.example.com:12345/defaultdb?charset=utf8mb4"
+
+
+def test_existing_pymysql_url_is_kept():
+    original = "mysql+pymysql://certis:certis@db:3306/certis?charset=utf8mb4"
+    assert normalize_database_url(original) == (original, False)
+
+
+def test_disabled_ssl_mode_means_plain_connection():
+    url, tls = normalize_database_url("mysql://u:p@h:3306/d?ssl_mode=DISABLED&connect_timeout=5")
+    assert tls is False
+    assert url == "mysql+pymysql://u:p@h:3306/d?connect_timeout=5&charset=utf8mb4"
+
+
+def test_non_mysql_url_is_untouched():
+    assert normalize_database_url("sqlite:///./cert_is.db") == ("sqlite:///./cert_is.db", False)
+
+
+def test_pem_accepts_escaped_newlines():
+    assert _pem("-----BEGIN-----\\nabc\\n-----END-----\n") == "-----BEGIN-----\nabc\n-----END-----"
+    assert _pem("  ") is None and _pem(None) is None
+
+
+def test_engine_uses_pymysql_without_ssl_mode_argument():
+    from app.db.session import make_engine
+
+    engine = make_engine("mysql://u:p@h:3306/d?ssl-mode=REQUIRED")
+    assert engine.url.drivername == "mysql+pymysql"
+    assert dict(engine.url.query) == {"charset": "utf8mb4"}
