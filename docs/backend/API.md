@@ -88,9 +88,11 @@ POST /api/auth/login
 | GET | `/api/admin/users` | 임원진 | 전체 계정(비활성 포함) |
 | POST | `/api/admin/users` | 임원진 | `{username, name, password, role?}` → 201. 아이디 중복 409 |
 | PATCH | `/api/admin/users/{id}` | 임원진 | `{name?, role?, isActive?}` 보낸 값만 변경. 자기 자신의 임원 해제·비활성화는 400 |
+| PUT | `/api/admin/users/{id}/password` | 임원진 | `{newPassword}` → 204. 비밀번호를 잊은 부원의 비밀번호 초기화 |
 
 - 아이디: 영문·숫자·`_.-` 3~50자, 비밀번호 8~128자.
-- 발급·변경은 `audit_logs`에 기록한다.
+- 발급·변경·비밀번호 초기화는 `audit_logs`에 기록한다.
+- 화면: 설정 → **계정 관리**(임원진에게만 보임). 모든 서버 계정은 설정 → **내 계정**에서 비밀번호를 바꾼다.
 
 ### 활동 조회
 

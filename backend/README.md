@@ -58,7 +58,7 @@ ruff check .      # 코드 검사
 | tests/test_security.py | 비밀번호 해시·검증, 토큰 만료·위조·`alg=none` 거부 |
 | tests/test_permissions.py | 임원진/일반부원 × 팀장/팀원/미참여 권한 규칙 |
 | tests/test_auth_api.py | 로그인, `/me`, 역할 변경·비활성화의 즉시 반영 |
-| tests/test_users_api.py | 임원진 전용 계정 관리, 입력 검증, 비밀번호 변경 |
+| tests/test_users_api.py | 임원진 전용 계정 관리·비밀번호 초기화, 입력 검증, 비밀번호 변경 |
 | tests/test_workspaces_api.py | 활동 조회 권한, 구성원/팀장 전용 의존성 |
 | tests/test_schema.py | 전체 테이블 등록, MySQL DDL 변환, 예약 슬롯 중복 차단 |
 | tests/test_config.py | 호스팅 DB 접속 주소(`ssl-mode`) 변환, CA 인증서 값 읽기 |
