@@ -1,7 +1,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { rankSurvey, surveyFields, surveyQuestions } from '../src/recommend.ts';
-import { applyForm, calendarEvents, canChat, canView, dashboardDeadlines, checkBooking, fields, fresh, getDraft, getSnapshot, leader, loadPreferences, loadWarning, minutes, mutate, normalize, resetModel, room, saveDocument, setDraft, STORE, UI_STORE, updateMembers, visibleEvents, workspace } from '../src/model.ts';
+import { applyForm, calendarEvents, canChat, canView, dashboardDeadlines, checkBooking, fields, fresh, getDraft, getSnapshot, leader, loadPreferences, loadWarning, localUserId, member, minutes, mutate, normalize, resetModel, room, saveDocument, setDraft, STORE, UI_STORE, uid, updateMembers, visibleEvents, workspace } from '../src/model.ts';
 
 const values = new Map<string, string>();
 let unavailable = false;
@@ -248,4 +248,13 @@ test('D-day sorts unfinished deadlines and respects membership and private event
   assert.equal(all.some(d => d.key === 'event-private'), false);
   workspace(m, 1)!.status = '완료';
   assert.deepEqual(dashboardDeadlines(m, me, '2026-10-08').map(d => d.key), ['event-club']);
+});
+
+test('server accounts map to local sample users until activity APIs are connected', () => {
+  assert.equal(localUserId({ username: 'demo', name: '데모 사용자' }), 'me');
+  assert.equal(localUserId({ username: 'minseo', name: '민서' }), 'minseo');
+  assert.equal(uid('admin'), undefined);
+  assert.equal(localUserId({ username: 'admin', name: '운영진' }), 'admin');
+  assert.equal(uid('admin'), 'admin');
+  assert.equal(member(workspace(getSnapshot(), 1), 'admin'), false);
 });

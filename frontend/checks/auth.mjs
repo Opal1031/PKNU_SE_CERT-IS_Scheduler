@@ -40,7 +40,8 @@ export async function checkAuth(tab) {
   await page.getByLabel('아이디', { exact: true }).fill('auth-check');
   await page.getByLabel('비밀번호', { exact: true }).fill('demo-only');
   await page.getByRole('button', { name: '로그인', exact: true }).click(); await snapshot();
-  assert.match(await page.getByRole('alert').innerText(), /서버 연결 후/);
+  // 백엔드가 켜져 있으면 인증 실패, 꺼져 있으면 연결 실패 안내가 보인다.
+  assert.match(await page.getByRole('alert').innerText(), /아이디 또는 비밀번호가 올바르지 않음|서버에 연결할 수 없어요/);
   assert.equal(await account().count(), 0, 'Credential form never pretends to authenticate');
   assert.equal(await page.getByLabel('비밀번호', { exact: true }).evaluate(el => el.value), '');
   await page.getByRole('combobox', { name: '데모 사용자', exact: true }).selectOption('gitae');

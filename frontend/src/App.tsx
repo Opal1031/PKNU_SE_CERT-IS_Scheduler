@@ -9,8 +9,10 @@ import { Dashboard } from './pages/Dashboard';
 import { Reservations } from './pages/Reservations';
 import { Settings } from './pages/Settings';
 import Survey from './Survey';
+import { DEMO_TOOLS, fetchMe, getToken, login as apiLogin, logout as apiLogout } from './api';
+import type { ApiUser } from './api';
 import type { ModalState, Room } from './model';
-import { canView, getDraft, getSnapshot, iso, loadPreferences, loadWarning, member, role, room, same, setDraft, subscribe, UI_STORE, uid, url, workspace, writeLocal } from './model';
+import { canView, getDraft, getSnapshot, iso, loadPreferences, loadWarning, localUserId, member, role, room, same, setDraft, subscribe, UI_STORE, uid, url, workspace, writeLocal } from './model';
 import type { Preferences } from './model';
 import { Empty, Heading, Icon, IconButton } from './ui';
 
@@ -19,12 +21,14 @@ function parse(hash: string) {
   const [path, query] = hash.replace(/^#\/?/, '').split('?'), parts = (path || 'dashboard').split('/');
   return { workspaceId: parts[0] === 'workspace' ? parts[1] : undefined, page: parts[0] === 'workspace' ? parts[2] === 'chat' ? 'calendar' : parts[2] || 'calendar' : parts[0], roomId: new URLSearchParams(query).get('room') || parts[3], legacyChat: parts[2] === 'chat' };
 }
-// ponytail: tab-scoped demo state only; replace with a server-verified session when authentication is connected.
+// 데모 로그인은 개발 서버에서 서버 없이 화면을 확인하는 용도로만 남긴다. 실제 로그인은 서버가 발급한 토큰을 쓴다.
 const DEMO_SESSION = 'cert-is-demo-session-v1';
+const demoActive = () => { try { return DEMO_TOOLS && sessionStorage.getItem(DEMO_SESSION) === 'active'; } catch { return false; } };
 export default function App() {
   const model = useSyncExternalStore(subscribe, getSnapshot);
   const [prefs, updatePrefs] = useState(loadPreferences), [hash, setHash] = useState(() => location.hash || prefs.lastHash);
-  const [loggedIn, setLoggedIn] = useState(() => { try { return sessionStorage.getItem(DEMO_SESSION) === 'active'; } catch { return false; } });
+  // 저장된 토큰이 있으면 서버 확인(/api/auth/me)이 끝날 때까지 로그인 여부를 정하지 않는다.
+  const [loggedIn, setLoggedIn] = useState(() => !getToken() && demoActive()), [checking, setChecking] = useState(() => !!getToken());
   const [modal, open] = useState<ModalState | null>(null), [toast, setToast] = useState(''), [quoteSignal, quoted] = useState(0);
   const main = useRef<HTMLElement>(null), lastWorkspace = useRef<string | undefined>(undefined), timer = useRef<number | undefined>(undefined), dragging = useRef<{ x: number; width: number } | null>(null);
   const setPrefs = useCallback((patch: Partial<Preferences>) => updatePrefs(old => ({ ...old, ...patch })), []);
@@ -57,14 +61,30 @@ export default function App() {
     }
   }, [hash, doc?.id, w?.id, loggedIn]);
   useEffect(() => { if (loggedIn && route.page === 'login') location.hash = '#/dashboard'; }, [loggedIn, route.page]);
-  function login(userId: string) {
+  useEffect(() => {
+    if (!checking) return;
+    // 새로고침 후에도 서버가 토큰을 인정할 때만 로그인 상태를 복원한다. 역할도 서버 값으로 다시 맞춘다.
+    fetchMe().then(enter).catch((error: Error) => { apiLogout(); notify(error.message); }).finally(() => setChecking(false));
+  }, []);
+  function enter(user: ApiUser) {
+    setPrefs({ userId: localUserId(user), officer: user.officer, scope: 'mine' });
+    setLoggedIn(true);
+  }
+  async function signIn(username: string, password: string) {
+    const user = await apiLogin(username, password);
+    try { sessionStorage.removeItem(DEMO_SESSION); } catch { /* 데모 상태 없음 */ }
+    enter(user); open(null); location.hash = '#/dashboard'; notify(`${user.name}님, 환영해요.`);
+  }
+  function demoLogin(userId: string) {
     if (!uid(userId)) { notify('데모 사용자를 선택해주세요.'); return; }
     try { sessionStorage.setItem(DEMO_SESSION, 'active'); }
     catch { notify('브라우저 세션을 저장할 수 없어요. 저장 설정을 확인해주세요.'); return; }
+    apiLogout();
     setPrefs({ userId, officer: false, scope: 'mine' });
     setLoggedIn(true); open(null); location.hash = '#/dashboard'; notify('데모 로그인 상태로 전환했어요.');
   }
   function logout() {
+    apiLogout();
     try { sessionStorage.removeItem(DEMO_SESSION); }
     catch { notify('로그아웃 상태를 저장할 수 없어요. 저장 설정을 확인해주세요.'); return; }
     setLoggedIn(false); open(null); lastWorkspace.current = undefined;
@@ -84,10 +104,11 @@ export default function App() {
   const styles = { '--chat': `${chatActivity ? prefs.chatWidth : 0}px` } as CSSProperties;
   const globalTitle = { dashboard: '홈', activities: '활동 목록', login: '로그인', calendar: '개인 캘린더', reservation: '동아리방 예약', ai: 'AI 설문', settings: '설정' }[route.page] || '활동';
   let page: ReactNode;
-  if (!loggedIn) {
+  if (checking) page = <Empty>로그인 상태를 확인하고 있어요.</Empty>;
+  else if (!loggedIn) {
     if (!route.workspaceId && route.page === 'dashboard') page = <GuestHome />;
     else if (!route.workspaceId && route.page === 'activities') page = <GuestActivities activities={model.workspaces} />;
-    else page = <LoginPage userId={prefs.userId} restricted={route.page !== 'login'} login={login} />;
+    else page = <LoginPage userId={prefs.userId} restricted={route.page !== 'login'} signIn={signIn} demoLogin={DEMO_TOOLS ? demoLogin : undefined} />;
   } else if (route.workspaceId) {
     if (!w) page = <Empty>활동을 찾을 수 없음. <a href="#/dashboard">홈으로 이동</a></Empty>;
     else if (!canView(w, session)) page = <Empty>활동 접근 권한 없음. <a href="#/dashboard">홈으로 이동</a></Empty>;
@@ -169,7 +190,7 @@ export default function App() {
             <span> / {loggedIn ? w?.name || globalTitle : !route.workspaceId && ['dashboard', 'activities'].includes(route.page) ? globalTitle : '로그인'}</span>
           </div>
           <nav id="global-actions" className="flex items-center gap-2" aria-label="사용자 메뉴">
-            <AccountWidget session={loggedIn ? session : null} profile={() => open({ kind: 'profile' })} logout={logout} />
+            <AccountWidget session={loggedIn ? session : null} demo={!getToken()} profile={DEMO_TOOLS ? () => open({ kind: 'profile' }) : undefined} logout={logout} />
           </nav>
         </header>
         <div className="content-shell flex min-h-0 flex-1 overflow-hidden">
