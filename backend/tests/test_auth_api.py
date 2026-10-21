@@ -50,3 +50,30 @@ def test_deactivated_user_token_stops_working(client, people):
     admin = login(client, "officer")
     client.patch(f"/api/admin/users/{people['bob'].id}", json={"isActive": False}, headers=admin)
     assert client.get("/api/auth/me", headers=bob).status_code == 401
+
+
+def test_cors_allows_frontend_dev_server(client):
+    """프론트 개발 서버(127.0.0.1:8765)에서 토큰을 붙여 호출할 수 있어야 한다(브라우저 사전 요청)."""
+    for path, method, headers in [
+        ("/api/auth/login", "POST", "content-type"),
+        ("/api/auth/me", "GET", "authorization"),
+    ]:
+        res = client.options(
+            path,
+            headers={
+                "Origin": "http://127.0.0.1:8765",
+                "Access-Control-Request-Method": method,
+                "Access-Control-Request-Headers": headers,
+            },
+        )
+        assert res.status_code == 200
+        assert res.headers["access-control-allow-origin"] == "http://127.0.0.1:8765"
+
+
+def test_cors_rejects_unknown_origin(client):
+    res = client.options(
+        "/api/auth/login",
+        headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "POST"},
+    )
+    assert res.status_code == 400
+    assert "access-control-allow-origin" not in res.headers
