@@ -190,7 +190,7 @@ docker compose up --build
 
 API 문서(Swagger): http://127.0.0.1:8000/docs
 
-샘플 계정은 `admin`(임원진), `minseo`·`demo` 등(일반부원)이고 비밀번호는 `certis1234!`입니다. Python만으로 실행하는 방법과 테스트는 [backend/README.md](backend/README.md)에 있습니다.
+샘플 계정은 `admin`(임원진), `gitae`·`minseo`·`hyelim`·`yeonwoo`(일반부원)이고 비밀번호는 `certis1234!`입니다. Python만으로 실행하는 방법과 테스트는 [backend/README.md](backend/README.md)에 있습니다.
 
 ### 프론트엔드
 

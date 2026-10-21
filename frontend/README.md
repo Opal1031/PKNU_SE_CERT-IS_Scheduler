@@ -14,7 +14,7 @@ pnpm dev
 
 http://127.0.0.1:8765/#/dashboard 에서 확인 가능함. 포트가 사용 중이면 기존 서버를 종료해야 함.
 
-실제 계정 로그인은 백엔드가 실행 중이어야 함. 저장소 루트에서 `docker compose up --build`로 백엔드를 띄우면 `admin`(임원진), `minseo`·`demo` 등(일반부원) 계정으로 로그인 가능함(비밀번호 `certis1234!`). 백엔드 주소를 바꾸려면 `.env.example`을 `.env.local`로 복사해 `VITE_API_URL`을 수정함.
+실제 계정 로그인은 백엔드가 실행 중이어야 함. 저장소 루트에서 `docker compose up --build`로 백엔드를 띄우면 `admin`(임원진), `gitae`·`minseo`·`hyelim`·`yeonwoo`(일반부원) 계정으로 로그인 가능함(비밀번호 `certis1234!`). 백엔드 주소를 바꾸려면 `.env.example`을 `.env.local`로 복사해 `VITE_API_URL`을 수정함.
 
 ```powershell
 pnpm check
