@@ -1,7 +1,8 @@
 // 백엔드 API 호출. 주소는 frontend/.env 의 VITE_API_URL 로 바꾼다(.env.example 참고).
 export const API_URL = (import.meta.env?.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
-// 데모 로그인·사용자 미리보기 같은 검토 도구는 개발 서버(pnpm dev)에서만 보여 준다.
-export const DEMO_TOOLS = import.meta.env?.DEV ?? false;
+// 데모 로그인·사용자 미리보기 같은 검토 도구는 개발 서버(pnpm dev)와,
+// 백엔드 없이 올리는 데모 배포(VITE_DEMO_TOOLS=true, Vercel)에서만 보여 준다.
+export const DEMO_TOOLS = (import.meta.env?.DEV ?? false) || import.meta.env?.VITE_DEMO_TOOLS === 'true';
 
 export interface ApiUser {
   id: number; username: string; name: string;
