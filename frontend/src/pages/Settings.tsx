@@ -1,3 +1,4 @@
+import { DEMO_TOOLS } from '../api';
 import { id, iso, mutate, name, requireMember, room, same, stamp, workspace } from '../model';
 import { Heading } from '../ui';
 import type { ViewProps } from '../ui';
@@ -22,7 +23,7 @@ export function Settings({ model, session, prefs, setPrefs, open, notify }: View
   }
   return <>
     <Heading title="설정" />
-    <section className="settings-block">
+    {DEMO_TOOLS && <section className="settings-block">
       <div className="settings-row">
         <div>
           <h2>사용자 미리보기</h2>
@@ -30,7 +31,7 @@ export function Settings({ model, session, prefs, setPrefs, open, notify }: View
         </div>
         <button className="button small" onClick={() => open({ kind: 'profile' })}>변경</button>
       </div>
-    </section>
+    </section>}
     <section className="settings-block">
       <div className="settings-row">
         <div>

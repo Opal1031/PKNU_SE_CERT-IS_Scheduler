@@ -44,8 +44,8 @@ export function GuestActivities({ activities }: { activities: Workspace[] }) {
   </div>;
 }
 
-export function LoginPage({ userId, restricted, login }: { userId: string; restricted: boolean; login: (userId: string) => void }) {
-  const [error, setError] = useState(''), [demoUser, setDemoUser] = useState(userId);
+export function LoginPage({ userId, restricted, signIn, demoLogin }: { userId: string; restricted: boolean; signIn: (username: string, password: string) => Promise<void>; demoLogin?: (userId: string) => void }) {
+  const [error, setError] = useState(''), [pending, setPending] = useState(false), [demoUser, setDemoUser] = useState(userId);
   return <div className="login-layout">
     <section className="login-intro">
       <span className="brand-mark">CI</span><span className="tag">CERT-IS</span>
@@ -57,28 +57,36 @@ export function LoginPage({ userId, restricted, login }: { userId: string; restr
     <section className="login-card" aria-labelledby="login-title">
       <h1 id="login-title">로그인</h1>
       <p className="login-description">{restricted ? '이 화면은 로그인 후 이용할 수 있어요.' : 'CERT-IS 계정으로 활동 공간에 들어오세요.'}</p>
-      <form aria-label="계정 로그인" onSubmit={event => {
+      <form aria-label="계정 로그인" onSubmit={async event => {
         event.preventDefault();
-        event.currentTarget.reset();
-        setError('계정 인증은 서버 연결 후 사용할 수 있어요. 지금은 아래 데모 로그인으로 화면을 확인하세요.');
+        const form = event.currentTarget, data = new FormData(form);
+        setError(''); setPending(true);
+        try { await signIn(String(data.get('username') || '').trim(), String(data.get('password') || '')); }
+        catch (failure) {
+          // 실패한 비밀번호는 화면에 남기지 않는다.
+          setError((failure as Error).message);
+          const password = form.elements.namedItem('password');
+          if (password instanceof HTMLInputElement) password.value = '';
+        }
+        finally { setPending(false); }
       }}>
         <Field label="아이디" name="username" autoComplete="username" placeholder="아이디를 입력하세요" required maxLength={100} />
         <Field label="비밀번호" name="password" type="password" autoComplete="current-password" placeholder="비밀번호를 입력하세요" required maxLength={128} />
         {error && <p className="form-error" role="alert">{error}</p>}
-        <button className="button primary" type="submit">로그인 <Icon name="right" /></button>
+        <button className="button primary" type="submit" disabled={pending}>{pending ? '로그인 중' : '로그인'} <Icon name="right" /></button>
       </form>
       <div className="login-help"><p>계정 발급 및 비밀번호 문의는 동아리 운영진에게 연락해주세요.</p></div>
-      <section className="demo-login" aria-labelledby="demo-title">
+      {demoLogin && <section className="demo-login" aria-labelledby="demo-title">
         <h2 id="demo-title">화면 미리보기</h2>
-        <p>인증 서버 연결 전 데모예요. 샘플 사용자로 로그인 상태와 활동 화면을 확인할 수 있어요.</p>
+        <p>개발 서버에서만 보이는 데모예요. 백엔드 없이 샘플 사용자로 로그인 상태와 활동 화면을 확인할 수 있어요.</p>
         <Select label="데모 사용자" items={users.map(user => [user.id, user.name])} value={demoUser} onChange={event => setDemoUser(event.target.value)} />
-        <button className="button" type="button" onClick={() => login(demoUser)}>데모 로그인</button>
-      </section>
+        <button className="button" type="button" onClick={() => demoLogin(demoUser)}>데모 로그인</button>
+      </section>}
     </section>
   </div>;
 }
 
-export function AccountWidget({ session, profile, logout }: { session: Session | null; profile: () => void; logout: () => void }) {
+export function AccountWidget({ session, demo, profile, logout }: { session: Session | null; demo: boolean; profile?: () => void; logout: () => void }) {
   const id = useId(), panel = useRef<HTMLDivElement>(null);
   if (!session) return <a className="button small" href="#/login"><Icon name="user" />로그인</a>;
   const role = session.officer ? '임원진' : '일반 부원';
@@ -87,9 +95,9 @@ export function AccountWidget({ session, profile, logout }: { session: Session |
       <span className="account-avatar"><Icon name="user" /></span><span className="account-name">{name(session.userId)}</span><Icon name="down" />
     </button>
     <div id={id} ref={panel} popover="auto" className="account-panel" aria-label="내 계정">
-      <div className="account-summary"><strong>{name(session.userId)}</strong><span>{role}</span><small>데모 로그인 상태</small></div>
+      <div className="account-summary"><strong>{name(session.userId)}</strong><span>{role}</span><small>{demo ? '데모 로그인 상태' : 'CERT-IS 계정'}</small></div>
       <a href="#/settings" onClick={() => panel.current?.hidePopover()}><Icon name="settings" />설정</a>
-      <button type="button" onClick={() => { panel.current?.hidePopover(); profile(); }}><Icon name="user" />사용자 미리보기</button>
+      {profile && <button type="button" onClick={() => { panel.current?.hidePopover(); profile(); }}><Icon name="user" />사용자 미리보기</button>}
       <button type="button" className="account-logout" onClick={() => { panel.current?.hidePopover(); logout(); }}><Icon name="right" />로그아웃</button>
     </div>
   </>;

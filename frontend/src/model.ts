@@ -7,6 +7,13 @@ export type Session = { userId: string; officer: boolean };
 export const fields = ['웹 보안', '네트워크', '암호학', '시스템 보안'];
 export const statuses = ['계획', '진행 중', '보류', '완료', '보관'];
 export const users = [{ id: 'me', name: '나' }, { id: 'gitae', name: '기태' }, { id: 'minseo', name: '민서' }, { id: 'hyelim', name: '혜림' }, { id: 'jisu', name: '지수' }, { id: 'doyun', name: '도윤' }, { id: 'subin', name: '수빈' }];
+// ponytail: 활동·일정 API가 연결되기 전까지 서버 계정을 로컬 샘플 사용자 ID로 연결한다.
+// 서버 demo 계정은 샘플의 '나'(me)이고, 샘플에 없는 계정은 구성원이 아닌 사용자로 추가한다.
+export function localUserId(account: { username: string; name: string }) {
+  const userId = account.username === 'demo' ? 'me' : account.username;
+  if (!users.some(u => u.id === userId)) users.push({ id: userId, name: account.name });
+  return userId;
+}
 export interface Workspace {
   id: Id; name: string; type: 'project' | 'study'; initial: string; field: string;
   status: string; memberIds: string[]; leaderId: string; createdBy: string;
