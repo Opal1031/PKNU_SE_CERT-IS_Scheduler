@@ -61,9 +61,13 @@ class Settings:
     )
 
     def check(self) -> None:
-        """운영 환경에서 개발용 비밀키로 실행되는 사고를 막는다."""
-        if self.env == "production" and (self.jwt_secret == DEV_JWT_SECRET or len(self.jwt_secret.encode()) < 32):
+        """운영 환경에서 개발용 비밀키나 임시 SQLite 파일로 실행되는 사고를 막는다."""
+        if self.env != "production":
+            return
+        if self.jwt_secret == DEV_JWT_SECRET or len(self.jwt_secret.encode()) < 32:
             raise RuntimeError("운영 환경에서는 32바이트 이상의 JWT_SECRET 환경 변수를 반드시 지정해야 함")
+        if self.database_url.startswith("sqlite"):
+            raise RuntimeError("운영 환경에서는 DATABASE_URL 환경 변수로 MySQL 주소를 반드시 지정해야 함")
 
 
 settings = Settings()

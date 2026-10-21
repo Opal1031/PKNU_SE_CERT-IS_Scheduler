@@ -45,3 +45,20 @@ def test_pyproject_dependencies_match_requirements():
     lines = (root / "requirements.txt").read_text(encoding="utf-8").splitlines()
     required = [line.strip() for line in lines if line.strip() and not line.startswith("#")]
     assert sorted(declared) == sorted(required)
+
+
+def test_production_requires_secret_and_database():
+    import pytest
+
+    from app.core.config import DEV_JWT_SECRET, Settings
+
+    secret, mysql = "x" * 40, "mysql://u:p@h:3306/d?ssl-mode=REQUIRED"
+    Settings(env="production", jwt_secret=secret, database_url=mysql).check()
+    Settings(env="local", jwt_secret=DEV_JWT_SECRET, database_url="sqlite:///./cert_is.db").check()
+    for bad in (
+        Settings(env="production", jwt_secret=DEV_JWT_SECRET, database_url=mysql),
+        Settings(env="production", jwt_secret="short", database_url=mysql),
+        Settings(env="production", jwt_secret=secret, database_url="sqlite:///./cert_is.db"),
+    ):
+        with pytest.raises(RuntimeError):
+            bad.check()

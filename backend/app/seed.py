@@ -10,6 +10,7 @@ import os
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.security import hash_password
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
@@ -91,6 +92,7 @@ def seed(db: Session, password: str = DEFAULT_PASSWORD) -> bool:
 
 
 def main() -> None:
+    settings.check()  # 배포 빌드에서 DB 주소·비밀키가 빠졌으면 여기서 멈춘다.
     Base.metadata.create_all(engine)
     password = os.getenv("SEED_PASSWORD", DEFAULT_PASSWORD)
     with SessionLocal() as db:
