@@ -3,7 +3,13 @@ import assert from 'node:assert/strict';
 import { changePassword, getToken, login, SESSION_EXPIRED, tokenExpiresAt } from '../src/api.ts';
 
 const events: string[] = [];
-Object.defineProperty(globalThis, 'dispatchEvent', { value: (event: Event) => { events.push(event.type); return true; }, configurable: true });
+Object.defineProperty(globalThis, 'dispatchEvent', {
+  value: (event: Event) => {
+    events.push(event.type);
+    return true;
+  },
+  configurable: true
+});
 
 const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
 const token = (payload: object) => `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode(payload)}.signature`;
@@ -19,7 +25,11 @@ test('토큰의 만료 시각(exp)을 밀리초로 읽음', () => {
 });
 
 test('로그인 후 서버가 토큰을 거절(401)하면 토큰을 지우고 세션 만료를 알림', async () => {
-  respond(200, { accessToken: token({ exp: 9_999_999_999 }), tokenType: 'bearer', user: { id: 1, username: 'alice', name: 'alice', role: 'member', officer: false, isActive: true, createdAt: '' } });
+  respond(200, {
+    accessToken: token({ exp: 9_999_999_999 }),
+    tokenType: 'bearer',
+    user: { id: 1, username: 'alice', name: 'alice', role: 'member', officer: false, isActive: true, createdAt: '' }
+  });
   await login('alice', 'password123');
   assert.ok(getToken());
   respond(401, { detail: '로그인이 필요함' });
@@ -32,7 +42,11 @@ test('로그인 실패(401)나 다른 오류는 세션 만료로 보지 않음',
   events.length = 0;
   respond(401, { detail: '아이디 또는 비밀번호가 올바르지 않음' });
   await assert.rejects(login('alice', 'wrong'), /올바르지 않음/);
-  respond(200, { accessToken: token({ exp: 9_999_999_999 }), tokenType: 'bearer', user: { id: 1, username: 'alice', name: 'alice', role: 'member', officer: false, isActive: true, createdAt: '' } });
+  respond(200, {
+    accessToken: token({ exp: 9_999_999_999 }),
+    tokenType: 'bearer',
+    user: { id: 1, username: 'alice', name: 'alice', role: 'member', officer: false, isActive: true, createdAt: '' }
+  });
   await login('alice', 'password123');
   respond(400, { detail: '현재 비밀번호가 올바르지 않음' });
   await assert.rejects(changePassword('wrong', 'newpass123'), /현재 비밀번호/);

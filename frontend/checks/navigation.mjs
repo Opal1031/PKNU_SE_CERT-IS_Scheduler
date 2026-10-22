@@ -7,7 +7,10 @@ export async function checkNavigation(tab) {
     await page.getByRole('link', { name: label, exact: true }).first().click();
     await page.domSnapshot();
     assert.equal(await page.locator('#chat-sidebar').count(), 0, `${label}: no activity chat`);
-    assert.equal(await page.getByRole('link', { name: label, exact: true }).first().getAttribute('aria-current'), 'page');
+    assert.equal(
+      await page.getByRole('link', { name: label, exact: true }).first().getAttribute('aria-current'),
+      'page'
+    );
   }
   assert.equal(await page.locator('#global-sidebar').getByRole('link', { name: '홈', exact: true }).count(), 0);
   assert.equal(await page.locator('.brand-logo').evaluate(el => el.complete && el.naturalWidth > 0), true);
@@ -20,13 +23,30 @@ export async function checkNavigation(tab) {
   await page.domSnapshot();
   assert.equal(await page.evaluate(() => document.querySelector('#modal')?.matches(':popover-open')), true);
   assert.equal(await page.evaluate(() => document.querySelector('#modal')?.matches(':modal')), false);
-  const layout = await page.evaluate(() => { const popup = document.querySelector('#modal').getBoundingClientRect(), launcher = document.querySelector('#workspace-launcher').getBoundingClientRect(); return { width: popup.width, left: popup.left, right: popup.right, top: popup.top, bottom: popup.bottom, launcherRight: launcher.right, viewport: window.innerWidth, viewportHeight: window.innerHeight, columns: getComputedStyle(document.querySelector('.activity-grid')).gridTemplateColumns.split(' ').length }; });
+  const layout = await page.evaluate(() => {
+    const popup = document.querySelector('#modal').getBoundingClientRect(),
+      launcher = document.querySelector('#workspace-launcher').getBoundingClientRect();
+    return {
+      width: popup.width,
+      left: popup.left,
+      right: popup.right,
+      top: popup.top,
+      bottom: popup.bottom,
+      launcherRight: launcher.right,
+      viewport: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      columns: getComputedStyle(document.querySelector('.activity-grid')).gridTemplateColumns.split(' ').length
+    };
+  });
   assert.ok(layout.width <= 321 && layout.left > layout.launcherRight && layout.right <= layout.viewport);
   assert.ok(layout.top >= 0 && layout.bottom <= layout.viewportHeight);
   assert.equal(layout.columns, 3);
   assert.equal(await page.getByRole('region', { name: '프로젝트', exact: true }).isVisible(), true);
   assert.equal(await page.getByRole('region', { name: '스터디', exact: true }).isVisible(), true);
-  assert.equal(await page.locator('#modal').getByRole('button', { name: '프로젝트 및 스터디 생성', exact: true }).count(), 1);
+  assert.equal(
+    await page.locator('#modal').getByRole('button', { name: '프로젝트 및 스터디 생성', exact: true }).count(),
+    1
+  );
   await page.getByRole('button', { name: '프로젝트 및 스터디 생성', exact: true }).last().click();
   await page.domSnapshot();
   assert.equal(await page.getByRole('heading', { name: '활동 생성', exact: true }).isVisible(), true);
@@ -50,7 +70,11 @@ export async function checkNavigation(tab) {
   await page.domSnapshot();
   assert.equal(await page.locator('#modal').count(), 0, 'Clicking outside dismisses the picker');
   assert.equal(await page.locator('#workspace-launcher').getAttribute('aria-expanded'), 'false');
-  assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('href')), '#/reservation', 'Outside link keeps keyboard focus');
+  assert.equal(
+    await page.evaluate(() => document.activeElement?.getAttribute('href')),
+    '#/reservation',
+    'Outside link keeps keyboard focus'
+  );
   await page.getByRole('button', { name: '프로젝트 및 스터디', exact: true }).click();
   await page.domSnapshot();
   const study = page.getByRole('link', { name: '네트워크 보안 · 스터디', exact: true });
@@ -74,7 +98,16 @@ export async function checkActivityNames(tab) {
   const page = tab.playwright;
   await page.getByRole('button', { name: '이름 확인', exact: true }).click();
   await page.domSnapshot();
-  const names = await page.evaluate(() => Array.from(document.querySelectorAll('.activity-name')).map(el => ({ height: el.clientHeight, scrollHeight: el.scrollHeight, width: el.clientWidth, scrollWidth: el.scrollWidth, wordBreak: getComputedStyle(el).wordBreak, wrap: getComputedStyle(el).textWrap })));
+  const names = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.activity-name')).map(el => ({
+      height: el.clientHeight,
+      scrollHeight: el.scrollHeight,
+      width: el.clientWidth,
+      scrollWidth: el.scrollWidth,
+      wordBreak: getComputedStyle(el).wordBreak,
+      wrap: getComputedStyle(el).textWrap
+    }))
+  );
   assert.equal(names.length, 3);
   assert.ok(names.every(x => x.height === 36 && x.wordBreak === 'keep-all' && x.wrap === 'balance'));
   assert.equal(names[0].scrollHeight, names[0].height);
@@ -90,16 +123,42 @@ export async function checkActivityNames(tab) {
   await page.domSnapshot();
   const tooltip = page.locator('.activity-tooltip:popover-open');
   assert.equal(await tooltip.innerText({}), 'CERT-IS 통합 관리 및 네트워크 보안 취약점 분석 프로젝트');
-  const bounds = await tooltip.evaluate(el => { const r = el.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: window.innerWidth, height: window.innerHeight }; });
-  assert.ok(bounds.left >= 0 && bounds.right <= bounds.width && bounds.top >= 0 && bounds.bottom <= bounds.height, 'Tooltip stays in the viewport');
-  await page.getByRole('link', { name: 'CERT-IS 통합 관리 및 네트워크 보안 취약점 분석 프로젝트 · 프로젝트', exact: true }).press('Escape');
+  const bounds = await tooltip.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    return {
+      left: r.left,
+      right: r.right,
+      top: r.top,
+      bottom: r.bottom,
+      width: window.innerWidth,
+      height: window.innerHeight
+    };
+  });
+  assert.ok(
+    bounds.left >= 0 && bounds.right <= bounds.width && bounds.top >= 0 && bounds.bottom <= bounds.height,
+    'Tooltip stays in the viewport'
+  );
+  await page
+    .getByRole('link', { name: 'CERT-IS 통합 관리 및 네트워크 보안 취약점 분석 프로젝트 · 프로젝트', exact: true })
+    .press('Escape');
   await page.domSnapshot();
   assert.equal(await tooltip.count(), 0);
-  assert.equal(await page.evaluate(() => document.querySelector('#modal')?.matches(':popover-open')), true, 'Dismissing the tooltip keeps the picker open');
-  await page.getByRole('link', { name: 'CERT-IS 통합 관리 및 네트워크 보안 취약점 분석 프로젝트 · 프로젝트', exact: true }).press('Tab');
+  assert.equal(
+    await page.evaluate(() => document.querySelector('#modal')?.matches(':popover-open')),
+    true,
+    'Dismissing the tooltip keeps the picker open'
+  );
+  await page
+    .getByRole('link', { name: 'CERT-IS 통합 관리 및 네트워크 보안 취약점 분석 프로젝트 · 프로젝트', exact: true })
+    .press('Tab');
   await page.domSnapshot();
   assert.equal(await tooltip.count(), 1, 'Next long name appears on keyboard focus');
-  await page.getByRole('link', { name: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ · 프로젝트', exact: true }).press('Enter');
+  await page
+    .getByRole('link', {
+      name: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ · 프로젝트',
+      exact: true
+    })
+    .press('Enter');
   await page.domSnapshot();
   assert.equal(await page.locator('#modal').count(), 0);
   assert.equal(await tooltip.count(), 0, 'Navigating removes the tooltip');

@@ -9,68 +9,148 @@ import { Dashboard } from './pages/Dashboard';
 import { Reservations } from './pages/Reservations';
 import { Settings } from './pages/Settings';
 import Survey from './Survey';
-import { expireSession, fetchMe, getToken, login as apiLogin, logout as apiLogout, SESSION_EXPIRED, signup as apiSignup, tokenExpiresAt } from './api';
+import {
+  expireSession,
+  fetchMe,
+  getToken,
+  login as apiLogin,
+  logout as apiLogout,
+  SESSION_EXPIRED,
+  signup as apiSignup,
+  tokenExpiresAt
+} from './api';
 import type { ApiError, ApiUser } from './api';
 import type { ModalState, Room } from './model';
-import { canView, getDraft, getSnapshot, iso, loadPreferences, loadWarning, localUserId, member, role, room, same, setDraft, subscribe, UI_STORE, url, workspace, writeLocal } from './model';
+import {
+  canView,
+  getDraft,
+  getSnapshot,
+  iso,
+  loadPreferences,
+  loadWarning,
+  localUserId,
+  member,
+  role,
+  room,
+  same,
+  setDraft,
+  subscribe,
+  UI_STORE,
+  url,
+  workspace,
+  writeLocal
+} from './model';
 import type { Preferences } from './model';
 import { Empty, Heading, Icon, IconButton } from './ui';
 
 function parse(hash: string) {
   // 이전 채팅 주소도 팀 캘린더로 열고 방 선택은 별도로 복원한다.
-  const [path, query] = hash.replace(/^#\/?/, '').split('?'), parts = (path || 'dashboard').split('/');
-  return { workspaceId: parts[0] === 'workspace' ? parts[1] : undefined, page: parts[0] === 'workspace' ? parts[2] === 'chat' ? 'calendar' : parts[2] || 'calendar' : parts[0], roomId: new URLSearchParams(query).get('room') || parts[3], legacyChat: parts[2] === 'chat' };
+  const [path, query] = hash.replace(/^#\/?/, '').split('?'),
+    parts = (path || 'dashboard').split('/');
+  return {
+    workspaceId: parts[0] === 'workspace' ? parts[1] : undefined,
+    page: parts[0] === 'workspace' ? (parts[2] === 'chat' ? 'calendar' : parts[2] || 'calendar') : parts[0],
+    roomId: new URLSearchParams(query).get('room') || parts[3],
+    legacyChat: parts[2] === 'chat'
+  };
 }
 export default function App() {
   const model = useSyncExternalStore(subscribe, getSnapshot);
-  const [prefs, updatePrefs] = useState(loadPreferences), [hash, setHash] = useState(() => location.hash || prefs.lastHash);
+  const [prefs, updatePrefs] = useState(loadPreferences),
+    [hash, setHash] = useState(() => location.hash || prefs.lastHash);
   // 저장된 토큰이 있으면 서버 확인(/api/auth/me)이 끝날 때까지 로그인 여부를 정하지 않는다.
-  const [loggedIn, setLoggedIn] = useState(false), [checking, setChecking] = useState(() => !!getToken());
+  const [loggedIn, setLoggedIn] = useState(false),
+    [checking, setChecking] = useState(() => !!getToken());
   // 로그인한 서버 계정 정보(로그아웃 상태면 null)
   const [account, setAccount] = useState<ApiUser | null>(null);
-  const [modal, open] = useState<ModalState | null>(null), [toast, setToast] = useState(''), [quoteSignal, quoted] = useState(0);
-  const main = useRef<HTMLElement>(null), lastWorkspace = useRef<string | undefined>(undefined), timer = useRef<number | undefined>(undefined), dragging = useRef<{ x: number; width: number } | null>(null);
+  const [modal, open] = useState<ModalState | null>(null),
+    [toast, setToast] = useState(''),
+    [quoteSignal, quoted] = useState(0);
+  const main = useRef<HTMLElement>(null),
+    lastWorkspace = useRef<string | undefined>(undefined),
+    timer = useRef<number | undefined>(undefined),
+    dragging = useRef<{ x: number; width: number } | null>(null);
   const setPrefs = useCallback((patch: Partial<Preferences>) => updatePrefs(old => ({ ...old, ...patch })), []);
-  const notify = useCallback((message: string) => { setToast(message); clearTimeout(timer.current); timer.current = window.setTimeout(() => setToast(''), 3500); }, []);
-  const session = { userId: prefs.userId, officer: prefs.officer }, route = parse(hash), w = workspace(model, route.workspaceId);
+  const notify = useCallback((message: string) => {
+    setToast(message);
+    clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setToast(''), 3500);
+  }, []);
+  const session = { userId: prefs.userId, officer: prefs.officer },
+    route = parse(hash),
+    w = workspace(model, route.workspaceId);
   const chatActivity = loggedIn && w && member(w, session.userId) ? w : undefined;
   const docs = w ? model.rooms.filter(r => same(r.workspaceId, w.id)) : [];
-  const doc = route.roomId ? docs.find(r => same(r.id, route.roomId)) : docs.find(r => same(r.id, prefs.chatRooms[String(w?.id)])) || docs.at(-1);
+  const doc = route.roomId
+    ? docs.find(r => same(r.id, route.roomId))
+    : docs.find(r => same(r.id, prefs.chatRooms[String(w?.id)])) || docs.at(-1);
   useEffect(() => {
     if (!location.hash) location.hash = loggedIn ? prefs.lastHash : '#/dashboard';
     const navigate = () => setHash(location.hash);
     window.addEventListener('hashchange', navigate);
-    const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') open(null); };
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') open(null);
+    };
     window.addEventListener('keydown', escape);
-    return () => { window.removeEventListener('hashchange', navigate); window.removeEventListener('keydown', escape); clearTimeout(timer.current); };
+    return () => {
+      window.removeEventListener('hashchange', navigate);
+      window.removeEventListener('keydown', escape);
+      clearTimeout(timer.current);
+    };
   }, []);
-  useEffect(() => { try { writeLocal(UI_STORE, prefs); } catch (error) { notify((error as Error).message); } }, [prefs, notify]);
   useEffect(() => {
-    open(null); main.current?.scrollTo(0, 0);
+    try {
+      writeLocal(UI_STORE, prefs);
+    } catch (error) {
+      notify((error as Error).message);
+    }
+  }, [prefs, notify]);
+  useEffect(() => {
+    open(null);
+    main.current?.scrollTo(0, 0);
     if (!loggedIn || route.page === 'login' || route.page === 'signup') return;
     if (w && canView(w, session) && !same(lastWorkspace.current, w.id)) setPrefs({ chatWorkspaceId: w.id });
-    if (route.legacyChat && route.roomId && room(model, route.roomId)?.memberIds.includes(session.userId)) setPrefs({ chatRooms: { ...prefs.chatRooms, [String(w?.id)]: route.roomId } });
-    lastWorkspace.current = route.workspaceId; setPrefs({ lastHash: hash });
+    if (route.legacyChat && route.roomId && room(model, route.roomId)?.memberIds.includes(session.userId))
+      setPrefs({ chatRooms: { ...prefs.chatRooms, [String(w?.id)]: route.roomId } });
+    lastWorkspace.current = route.workspaceId;
+    setPrefs({ lastHash: hash });
   }, [hash, loggedIn]);
-  useEffect(() => { if (chatActivity && !same(chatActivity.id, prefs.chatWorkspaceId)) setPrefs({ chatWorkspaceId: chatActivity.id }); }, [chatActivity?.id, prefs.chatWorkspaceId, setPrefs]);
+  useEffect(() => {
+    if (chatActivity && !same(chatActivity.id, prefs.chatWorkspaceId)) setPrefs({ chatWorkspaceId: chatActivity.id });
+  }, [chatActivity?.id, prefs.chatWorkspaceId, setPrefs]);
   useEffect(() => {
     if (loggedIn && route.page === 'document' && !route.roomId && doc && w && canView(w, session)) {
       // 문서 주소에 방을 고정해야 채팅방 변경이 편집 중인 문서를 바꾸지 않는다.
-      const next = url(w, 'document', doc.id); history.replaceState(null, '', next); setHash(next);
+      const next = url(w, 'document', doc.id);
+      history.replaceState(null, '', next);
+      setHash(next);
     }
   }, [hash, doc?.id, w?.id, loggedIn]);
-  useEffect(() => { if (loggedIn && (route.page === 'login' || route.page === 'signup')) location.hash = '#/dashboard'; }, [loggedIn, route.page]);
+  useEffect(() => {
+    if (loggedIn && (route.page === 'login' || route.page === 'signup')) location.hash = '#/dashboard';
+  }, [loggedIn, route.page]);
   useEffect(() => {
     if (!checking) return;
     // 새로고침 후에도 서버가 토큰을 인정할 때만 로그인 상태를 복원한다. 역할도 서버 값으로 다시 맞춘다.
     // 401(만료·비활성)은 아래 세션 만료 처리가 안내하므로 그 밖의 오류(서버 연결 실패 등)만 알린다.
-    fetchMe().then(enter).catch((error: ApiError) => { apiLogout(); if (error.status !== 401) notify(error.message); }).finally(() => setChecking(false));
+    fetchMe()
+      .then(enter)
+      .catch((error: ApiError) => {
+        apiLogout();
+        if (error.status !== 401) notify(error.message);
+      })
+      .finally(() => setChecking(false));
   }, []);
   useEffect(() => {
     // 서버가 토큰을 거절하면(만료·위조·계정 비활성화) 화면도 로그아웃 상태로 돌린다.
     const expired = () => {
-      setAccount(null); setLoggedIn(false); open(null); lastWorkspace.current = undefined;
-      setPrefs({ officer: false }); location.hash = '#/login'; notify('로그인이 만료됐어요. 다시 로그인해주세요.');
+      setAccount(null);
+      setLoggedIn(false);
+      open(null);
+      lastWorkspace.current = undefined;
+      setPrefs({ officer: false });
+      location.hash = '#/login';
+      notify('로그인이 만료됐어요. 다시 로그인해주세요.');
     };
     window.addEventListener(SESSION_EXPIRED, expired);
     return () => window.removeEventListener(SESSION_EXPIRED, expired);
@@ -88,140 +168,372 @@ export default function App() {
     setLoggedIn(true);
   }
   // 임원진이 자기 계정 정보를 바꾸면 서버 값으로 다시 맞춘다.
-  const refreshAccount = () => { fetchMe().then(enter).catch((error: ApiError) => { if (error.status !== 401) notify(error.message); }); };
+  const refreshAccount = () => {
+    fetchMe()
+      .then(enter)
+      .catch((error: ApiError) => {
+        if (error.status !== 401) notify(error.message);
+      });
+  };
   async function signIn(username: string, password: string) {
     const user = await apiLogin(username, password);
-    enter(user); open(null); location.hash = '#/dashboard'; notify(`${user.name}님, 환영해요.`);
+    enter(user);
+    open(null);
+    location.hash = '#/dashboard';
+    notify(`${user.name}님, 환영해요.`);
   }
   // 가입 신청은 승인 대기 계정을 만들 뿐이라 로그인 상태는 바뀌지 않는다.
-  async function signUp(input: { username: string; name: string; password: string }) { await apiSignup(input); }
+  async function signUp(input: { username: string; name: string; password: string }) {
+    await apiSignup(input);
+  }
   function logout() {
     apiLogout();
-    setAccount(null); setLoggedIn(false); open(null); lastWorkspace.current = undefined;
-    setPrefs({ officer: false }); location.hash = '#/dashboard'; notify('로그아웃했어요.');
+    setAccount(null);
+    setLoggedIn(false);
+    open(null);
+    lastWorkspace.current = undefined;
+    setPrefs({ officer: false });
+    location.hash = '#/dashboard';
+    notify('로그아웃했어요.');
   }
   const common = { model, session, prefs, setPrefs, open: (state: ModalState) => open(state), notify };
   function quote(r: Room, text: string) {
-    try { const draft = getDraft(session.userId, r.id); setDraft(session.userId, r.id, { body: `${draft?.body ?? model.documents[r.id]}\n\n## 대화 인용\n${text}\n`, baseVersion: draft?.baseVersion ?? model.documentMeta[r.id].version, at: iso() }); quoted(n => n + 1); location.hash = url(workspace(model, r.workspaceId)!, 'document', r.id); notify('회의록 초안에 인용 추가됨'); } catch (error) { notify((error as Error).message); }
+    try {
+      const draft = getDraft(session.userId, r.id);
+      setDraft(session.userId, r.id, {
+        body: `${draft?.body ?? model.documents[r.id]}\n\n## 대화 인용\n${text}\n`,
+        baseVersion: draft?.baseVersion ?? model.documentMeta[r.id].version,
+        at: iso()
+      });
+      quoted(n => n + 1);
+      location.hash = url(workspace(model, r.workspaceId)!, 'document', r.id);
+      notify('회의록 초안에 인용 추가됨');
+    } catch (error) {
+      notify((error as Error).message);
+    }
   }
   function completed(state: ModalState, result?: string | number) {
     open(null);
     if (state.kind === 'workspace-new' && result) location.hash = url(workspace(getSnapshot(), result)!);
     if (state.kind === 'leave' || state.kind === 'reset') location.hash = '#/dashboard';
-    if (state.kind === 'reset') { setPrefs({ chatWorkspaceId: 1, chatRooms: {}, reads: {}, messageDrafts: {} }); quoted(n => n + 1); }
-    if (['group-new', 'group-rename', 'tag-new', 'tag-rename', 'group-delete', 'tag-delete'].includes(state.kind)) open({ kind: 'tags', workspaceId: state.workspaceId });
+    if (state.kind === 'reset') {
+      setPrefs({ chatWorkspaceId: 1, chatRooms: {}, reads: {}, messageDrafts: {} });
+      quoted(n => n + 1);
+    }
+    if (['group-new', 'group-rename', 'tag-new', 'tag-rename', 'group-delete', 'tag-delete'].includes(state.kind))
+      open({ kind: 'tags', workspaceId: state.workspaceId });
   }
   const styles = { '--chat': `${chatActivity ? prefs.chatWidth : 0}px` } as CSSProperties;
-  const globalTitle = { dashboard: '홈', activities: '활동 목록', login: '로그인', signup: '회원가입', calendar: '개인 캘린더', reservation: '동아리방 예약', ai: 'AI 설문', settings: '설정' }[route.page] || '활동';
+  const globalTitle =
+    {
+      dashboard: '홈',
+      activities: '활동 목록',
+      login: '로그인',
+      signup: '회원가입',
+      calendar: '개인 캘린더',
+      reservation: '동아리방 예약',
+      ai: 'AI 설문',
+      settings: '설정'
+    }[route.page] || '활동';
   let page: ReactNode;
   if (checking) page = <Empty>로그인 상태를 확인하고 있어요.</Empty>;
   else if (!loggedIn) {
     if (!route.workspaceId && route.page === 'dashboard') page = <GuestHome />;
-    else if (!route.workspaceId && route.page === 'activities') page = <GuestActivities activities={model.workspaces} />;
+    else if (!route.workspaceId && route.page === 'activities')
+      page = <GuestActivities activities={model.workspaces} />;
     else if (!route.workspaceId && route.page === 'signup') page = <SignupPage signUp={signUp} />;
     else page = <LoginPage restricted={route.page !== 'login'} signIn={signIn} />;
   } else if (route.workspaceId) {
-    if (!w) page = <Empty>활동을 찾을 수 없음. <a href="#/dashboard">홈으로 이동</a></Empty>;
-    else if (!canView(w, session)) page = <Empty>활동 접근 권한 없음. <a href="#/dashboard">홈으로 이동</a></Empty>;
-    else page = <>
-      <Heading title={w.name}>
-        <span className={`tag ${member(w, session.userId) ? 'mine' : 'external'}`}>{role(w, session)}</span>
-        <IconButton title="활동 정보 및 구성원 관리" onClick={() => open({ kind: 'workspace-edit', workspaceId: w.id })} />
-
-      </Heading>
-      <nav className="workspace-tabs">
-        {[['calendar', '팀 캘린더'], ['document', '회의록'], ['reservation', '예약']].map(([section, text]) => <a key={section} className={route.page === section ? 'active' : ''} href={url(w, section)}>{text}</a>)}
-      </nav>
-      {route.page === 'document'
-        ? doc
-          ? <DocumentPage key={`${session.userId}:${doc.id}`} {...common} selected={doc} quoteSignal={quoteSignal} />
-          : <DocumentMissing workspaceId={w.id} open={common.open} />
-        : route.page === 'reservation'
-          ? <Reservations {...common} activity={w} />
-          : <Calendar {...common} activity={w} />}
-
-    </>;
+    if (!w)
+      page = (
+        <Empty>
+          활동을 찾을 수 없음. <a href="#/dashboard">홈으로 이동</a>
+        </Empty>
+      );
+    else if (!canView(w, session))
+      page = (
+        <Empty>
+          활동 접근 권한 없음. <a href="#/dashboard">홈으로 이동</a>
+        </Empty>
+      );
+    else
+      page = (
+        <>
+          <Heading title={w.name}>
+            <span className={`tag ${member(w, session.userId) ? 'mine' : 'external'}`}>{role(w, session)}</span>
+            <IconButton
+              title="활동 정보 및 구성원 관리"
+              onClick={() => open({ kind: 'workspace-edit', workspaceId: w.id })}
+            />
+          </Heading>
+          <nav className="workspace-tabs">
+            {[
+              ['calendar', '팀 캘린더'],
+              ['document', '회의록'],
+              ['reservation', '예약']
+            ].map(([section, text]) => (
+              <a key={section} className={route.page === section ? 'active' : ''} href={url(w, section)}>
+                {text}
+              </a>
+            ))}
+          </nav>
+          {route.page === 'document' ? (
+            doc ? (
+              <DocumentPage key={`${session.userId}:${doc.id}`} {...common} selected={doc} quoteSignal={quoteSignal} />
+            ) : (
+              <DocumentMissing workspaceId={w.id} open={common.open} />
+            )
+          ) : route.page === 'reservation' ? (
+            <Reservations {...common} activity={w} />
+          ) : (
+            <Calendar {...common} activity={w} />
+          )}
+        </>
+      );
   } else {
     switch (route.page) {
-      case 'calendar': page = <Calendar {...common} />; break;
-      case 'reservation': page = <Reservations {...common} />; break;
-      case 'ai': page = <Survey key={session.userId} {...common} />; break;
-      case 'settings': page = <Settings {...common} account={account} refreshAccount={refreshAccount} />; break;
-      default: page = <Dashboard {...common} logout={logout} />;
+      case 'calendar':
+        page = <Calendar {...common} />;
+        break;
+      case 'reservation':
+        page = <Reservations {...common} />;
+        break;
+      case 'ai':
+        page = <Survey key={session.userId} {...common} />;
+        break;
+      case 'settings':
+        page = <Settings {...common} account={account} refreshAccount={refreshAccount} />;
+        break;
+      default:
+        page = <Dashboard {...common} logout={logout} />;
     }
   }
-  return <>
-    <a className="skip-link" href="#main" onClick={e => { e.preventDefault(); main.current?.focus(); }}>본문으로 이동</a>
-    <div className={`app flex h-dvh overflow-x-auto overflow-y-hidden ${prefs.collapsed ? 'collapsed' : ''} ${!loggedIn ? 'guest' : ''}`} id="app" style={styles}>
-      <aside id="global-sidebar" className="global-sidebar flex shrink-0 flex-col overflow-y-auto overscroll-contain bg-nav" aria-label="전체 탐색">
-        <a className="brand" href="#/dashboard" aria-label="CERT-IS 홈" title="홈으로 이동" aria-current={!route.workspaceId && route.page === 'dashboard' ? 'page' : undefined}>
-          <img className="brand-logo" src={new URL('../../assets/icon/cert_is_logo.png', import.meta.url).href} width="32" height="32" alt="" />
-          <span className="brand-name">CERT-IS</span>
-        </a>
-        {loggedIn && <nav aria-label="기본 메뉴">{([['calendar', '달력', 'calendar'], ['reservation', '예약', 'reservation'], ['ai', 'AI 설문', 'ai']] as const).map(([page, label, icon]) => <a key={page} className={`nav-item ${!route.workspaceId && route.page === page ? 'active' : ''}`} href={`#/${page}`} title={label} aria-label={label} aria-current={!route.workspaceId && route.page === page ? 'page' : undefined}>
-          <Icon name={icon} />
-          <span className="nav-text">{label}</span>
-        </a>)}</nav>}
-        {!loggedIn && <>
-          <a className={`nav-item ${route.page === 'activities' ? 'active' : ''}`} href="#/activities" title="활동 목록" aria-label="활동 목록" aria-current={route.page === 'activities' ? 'page' : undefined}>
-            <Icon name="waffle" />
-            <span className="nav-text">활동 목록</span>
+  return (
+    <>
+      <a
+        className="skip-link"
+        href="#main"
+        onClick={e => {
+          e.preventDefault();
+          main.current?.focus();
+        }}
+      >
+        본문으로 이동
+      </a>
+      <div
+        className={`app flex h-dvh overflow-x-auto overflow-y-hidden ${prefs.collapsed ? 'collapsed' : ''} ${!loggedIn ? 'guest' : ''}`}
+        id="app"
+        style={styles}
+      >
+        <aside
+          id="global-sidebar"
+          className="global-sidebar flex shrink-0 flex-col overflow-y-auto overscroll-contain bg-nav"
+          aria-label="전체 탐색"
+        >
+          <a
+            className="brand"
+            href="#/dashboard"
+            aria-label="CERT-IS 홈"
+            title="홈으로 이동"
+            aria-current={!route.workspaceId && route.page === 'dashboard' ? 'page' : undefined}
+          >
+            <img
+              className="brand-logo"
+              src={new URL('../../assets/icon/cert_is_logo.png', import.meta.url).href}
+              width="32"
+              height="32"
+              alt=""
+            />
+            <span className="brand-name">CERT-IS</span>
           </a>
-          <a className={`nav-item ${route.page === 'login' ? 'active' : ''}`} href="#/login" aria-current={route.page === 'login' ? 'page' : undefined} aria-label="로그인">
-            <Icon name="user" />
-            <span className="nav-text">로그인</span>
-          </a>
-        </>}
-        {loggedIn && <>
-          <div className="nav-divider" role="separator" aria-label="활동 메뉴 구분">{Array.from({ length: 2 }, (_, i) => <span key={i} />)}</div>
-          <button id="workspace-launcher" className={`nav-item ${route.workspaceId || modal?.kind === 'workspace-pick' ? 'active' : ''}`} title="프로젝트 및 스터디" aria-label="프로젝트 및 스터디" aria-haspopup="dialog" aria-expanded={modal?.kind === 'workspace-pick'} onClick={() => open({ kind: 'workspace-pick' })}>
-            <Icon name="waffle" />
-            <span className="nav-text">프로젝트 및 스터디</span>
-          </button>
-          <button className="nav-item" title="프로젝트 및 스터디 생성" aria-label="프로젝트 및 스터디 생성" aria-haspopup="dialog" onClick={() => open({ kind: 'workspace-new' })}>
-            <Icon name="plus" />
-            <span className="nav-text">활동 생성</span>
-          </button>
-        </>}
-        <div className="nav-bottom">
-          {loggedIn && <a className={`nav-item ${route.page === 'settings' ? 'active' : ''}`} title="설정" aria-label="설정" aria-current={route.page === 'settings' ? 'page' : undefined} href="#/settings">
-            <Icon name="settings" />
-            <span className="nav-text">설정</span>
-          </a>}
-          <button className="nav-item" title="사이드바 접기 / 펼치기" aria-label="사이드바 접기 / 펼치기" aria-expanded={!prefs.collapsed} onClick={() => setPrefs({ collapsed: !prefs.collapsed })}>
-            <Icon name={prefs.collapsed ? 'right' : 'left'} />
-            <span className="nav-text">접기</span>
-          </button>
-        </div>
-      </aside>
-      <div className={`workspace-shell flex flex-1 flex-col ${chatActivity ? 'min-w-[590px]' : 'min-w-0'}`}>
-        <header className="topbar">
-          <div className="breadcrumb">
-            <strong>CERT-IS</strong>
-            <span> / {loggedIn ? w?.name || globalTitle : !route.workspaceId && ['dashboard', 'activities', 'signup'].includes(route.page) ? globalTitle : '로그인'}</span>
+          {loggedIn && (
+            <nav aria-label="기본 메뉴">
+              {(
+                [
+                  ['calendar', '달력', 'calendar'],
+                  ['reservation', '예약', 'reservation'],
+                  ['ai', 'AI 설문', 'ai']
+                ] as const
+              ).map(([page, label, icon]) => (
+                <a
+                  key={page}
+                  className={`nav-item ${!route.workspaceId && route.page === page ? 'active' : ''}`}
+                  href={`#/${page}`}
+                  title={label}
+                  aria-label={label}
+                  aria-current={!route.workspaceId && route.page === page ? 'page' : undefined}
+                >
+                  <Icon name={icon} />
+                  <span className="nav-text">{label}</span>
+                </a>
+              ))}
+            </nav>
+          )}
+          {!loggedIn && (
+            <>
+              <a
+                className={`nav-item ${route.page === 'activities' ? 'active' : ''}`}
+                href="#/activities"
+                title="활동 목록"
+                aria-label="활동 목록"
+                aria-current={route.page === 'activities' ? 'page' : undefined}
+              >
+                <Icon name="waffle" />
+                <span className="nav-text">활동 목록</span>
+              </a>
+              <a
+                className={`nav-item ${route.page === 'login' ? 'active' : ''}`}
+                href="#/login"
+                aria-current={route.page === 'login' ? 'page' : undefined}
+                aria-label="로그인"
+              >
+                <Icon name="user" />
+                <span className="nav-text">로그인</span>
+              </a>
+            </>
+          )}
+          {loggedIn && (
+            <>
+              <div className="nav-divider" role="separator" aria-label="활동 메뉴 구분">
+                {Array.from({ length: 2 }, (_, i) => (
+                  <span key={i} />
+                ))}
+              </div>
+              <button
+                id="workspace-launcher"
+                className={`nav-item ${route.workspaceId || modal?.kind === 'workspace-pick' ? 'active' : ''}`}
+                title="프로젝트 및 스터디"
+                aria-label="프로젝트 및 스터디"
+                aria-haspopup="dialog"
+                aria-expanded={modal?.kind === 'workspace-pick'}
+                onClick={() => open({ kind: 'workspace-pick' })}
+              >
+                <Icon name="waffle" />
+                <span className="nav-text">프로젝트 및 스터디</span>
+              </button>
+              <button
+                className="nav-item"
+                title="프로젝트 및 스터디 생성"
+                aria-label="프로젝트 및 스터디 생성"
+                aria-haspopup="dialog"
+                onClick={() => open({ kind: 'workspace-new' })}
+              >
+                <Icon name="plus" />
+                <span className="nav-text">활동 생성</span>
+              </button>
+            </>
+          )}
+          <div className="nav-bottom">
+            {loggedIn && (
+              <a
+                className={`nav-item ${route.page === 'settings' ? 'active' : ''}`}
+                title="설정"
+                aria-label="설정"
+                aria-current={route.page === 'settings' ? 'page' : undefined}
+                href="#/settings"
+              >
+                <Icon name="settings" />
+                <span className="nav-text">설정</span>
+              </a>
+            )}
+            <button
+              className="nav-item"
+              title="사이드바 접기 / 펼치기"
+              aria-label="사이드바 접기 / 펼치기"
+              aria-expanded={!prefs.collapsed}
+              onClick={() => setPrefs({ collapsed: !prefs.collapsed })}
+            >
+              <Icon name={prefs.collapsed ? 'right' : 'left'} />
+              <span className="nav-text">접기</span>
+            </button>
           </div>
-          <nav id="global-actions" className="flex items-center gap-2" aria-label="사용자 메뉴">
-            <AccountWidget session={loggedIn ? session : null} logout={logout} />
-          </nav>
-        </header>
-        <div className="content-shell flex min-h-0 flex-1 overflow-hidden">
-          {chatActivity && <>
-            <Chat {...common} activity={chatActivity} quote={quote} />
-            <div id="chat-resizer" role="separator" tabIndex={0} aria-label="채팅 공간 너비 조절" aria-orientation="vertical" aria-valuemin={240} aria-valuemax={460} aria-valuenow={prefs.chatWidth} onPointerDown={e => { dragging.current = { x: e.clientX, width: prefs.chatWidth }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { if (dragging.current) setPrefs({ chatWidth: Math.max(240, Math.min(460, dragging.current.width + e.clientX - dragging.current.x)) }); }} onPointerUp={() => { dragging.current = null; }} onPointerCancel={() => { dragging.current = null; }} onKeyDown={e => { if (['ArrowLeft', 'ArrowRight'].includes(e.key)) { e.preventDefault(); setPrefs({ chatWidth: Math.max(240, Math.min(460, prefs.chatWidth + (e.key === 'ArrowRight' ? 10 : -10))) }); } }} />
-          </>}
-          <main id="main" ref={main} tabIndex={-1} className={`min-w-[240px] flex-1 overflow-auto overscroll-contain bg-paper ${loggedIn && !route.workspaceId && route.page === 'ai' ? 'survey-main' : ''} ${loggedIn && !route.workspaceId && !['calendar', 'reservation', 'ai', 'settings', 'login'].includes(route.page) ? 'home-main' : ''}`}>
-            <div className="page">
-              {loggedIn && loadWarning && <p className="form-error">{loadWarning}</p>}
-              {page}
+        </aside>
+        <div className={`workspace-shell flex flex-1 flex-col ${chatActivity ? 'min-w-[590px]' : 'min-w-0'}`}>
+          <header className="topbar">
+            <div className="breadcrumb">
+              <strong>CERT-IS</strong>
+              <span>
+                {' '}
+                /{' '}
+                {loggedIn
+                  ? w?.name || globalTitle
+                  : !route.workspaceId && ['dashboard', 'activities', 'signup'].includes(route.page)
+                    ? globalTitle
+                    : '로그인'}
+              </span>
             </div>
-          </main>
-
+            <nav id="global-actions" className="flex items-center gap-2" aria-label="사용자 메뉴">
+              <AccountWidget session={loggedIn ? session : null} logout={logout} />
+            </nav>
+          </header>
+          <div className="content-shell flex min-h-0 flex-1 overflow-hidden">
+            {chatActivity && (
+              <>
+                <Chat {...common} activity={chatActivity} quote={quote} />
+                <div
+                  id="chat-resizer"
+                  role="separator"
+                  tabIndex={0}
+                  aria-label="채팅 공간 너비 조절"
+                  aria-orientation="vertical"
+                  aria-valuemin={240}
+                  aria-valuemax={460}
+                  aria-valuenow={prefs.chatWidth}
+                  onPointerDown={e => {
+                    dragging.current = { x: e.clientX, width: prefs.chatWidth };
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                  }}
+                  onPointerMove={e => {
+                    if (dragging.current)
+                      setPrefs({
+                        chatWidth: Math.max(240, Math.min(460, dragging.current.width + e.clientX - dragging.current.x))
+                      });
+                  }}
+                  onPointerUp={() => {
+                    dragging.current = null;
+                  }}
+                  onPointerCancel={() => {
+                    dragging.current = null;
+                  }}
+                  onKeyDown={e => {
+                    if (['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                      setPrefs({
+                        chatWidth: Math.max(240, Math.min(460, prefs.chatWidth + (e.key === 'ArrowRight' ? 10 : -10)))
+                      });
+                    }
+                  }}
+                />
+              </>
+            )}
+            <main
+              id="main"
+              ref={main}
+              tabIndex={-1}
+              className={`min-w-[240px] flex-1 overflow-auto overscroll-contain bg-paper ${loggedIn && !route.workspaceId && route.page === 'ai' ? 'survey-main' : ''} ${loggedIn && !route.workspaceId && !['calendar', 'reservation', 'ai', 'settings', 'login'].includes(route.page) ? 'home-main' : ''}`}
+            >
+              <div className="page">
+                {loggedIn && loadWarning && <p className="form-error">{loadWarning}</p>}
+                {page}
+              </div>
+            </main>
+          </div>
         </div>
-
+        {loggedIn && modal && (
+          <Dialog
+            key={`${modal.kind}:${modal.id}:${modal.workspaceId}:${modal.groupId}`}
+            {...common}
+            state={modal}
+            close={() => open(null)}
+            done={completed}
+          />
+        )}
       </div>
-      {loggedIn && modal && <Dialog key={`${modal.kind}:${modal.id}:${modal.workspaceId}:${modal.groupId}`} {...common} state={modal} close={() => open(null)} done={completed} />}
-
-    </div>
-    {toast && <div className="toast" role="status" aria-live="polite">{toast}</div>}
-  </>;
+      {toast && (
+        <div className="toast" role="status" aria-live="polite">
+          {toast}
+        </div>
+      )}
+    </>
+  );
 }
