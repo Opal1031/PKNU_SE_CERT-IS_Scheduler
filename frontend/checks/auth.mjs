@@ -1,3 +1,5 @@
+// 로그인·회원가입과 비로그인 화면 브라우저 점검(checkAuth). 로그인 실패 처리, 접근 제한,
+// 실제 계정으로 로그인·새로고침 유지·로그아웃까지 확인한다.
 import assert from 'node:assert/strict';
 
 // Run against the local app (pnpm dev + 백엔드) with cua_repl:
@@ -5,14 +7,17 @@ import assert from 'node:assert/strict';
 // 계정 정보를 넘기지 않으면 비로그인 화면·로그인 실패·회원가입 화면까지만 검사한다.
 export async function checkAuth(tab, credentials) {
   const page = tab.playwright;
+  // snapshot: 화면 상태 다시 읽기, account: 로그인했을 때만 있는 상단 계정 메뉴 버튼
   const snapshot = () => page.domSnapshot();
   const account = () => page.getByRole('button', { name: / · 사용자 메뉴$/ });
+  // 이미 로그인돼 있으면 먼저 로그아웃
   if (await account().count()) {
     await account().click();
     await snapshot();
     await page.locator('.account-panel').getByRole('button', { name: '로그아웃', exact: true }).click();
     await snapshot();
   }
+  // 비로그인 홈과 로그인 없이 보는 진행 중 활동 목록(카드는 로그인 화면으로 연결)
   await tab.goto('http://127.0.0.1:8765/#/dashboard');
   await snapshot();
   assert.equal(await page.getByRole('heading', { name: '함께 배우고, 함께 만들어가는 공간' }).isVisible(), true);
@@ -43,6 +48,7 @@ export async function checkAuth(tab, credentials) {
   await snapshot();
   assert.equal(await page.getByRole('heading', { name: '지금 진행 중인 활동', exact: true }).isVisible(), true);
   assert.equal(await account().count(), 0, 'The activity list is accessible without login');
+  // 로그인 실패: 빈 입력·틀린 계정은 들어가지 못하고 비밀번호 칸은 비워짐, 데모 로그인 없음
   await page.getByRole('link', { name: 'CERT-IS 홈', exact: true }).click();
   await snapshot();
   await page.getByRole('link', { name: '로그인하고 시작하기', exact: true }).click();
@@ -62,6 +68,7 @@ export async function checkAuth(tab, credentials) {
   assert.equal(await account().count(), 0, 'Credential form never pretends to authenticate');
   assert.equal(await page.getByLabel('비밀번호', { exact: true }).evaluate(el => el.value), '');
   assert.equal(await page.getByRole('button', { name: '데모 로그인' }).count(), 0, 'Demo login was removed');
+  // 회원가입: 비밀번호 확인이 다르면 서버로 보내지 않고 오류 표시
   await page.getByRole('link', { name: '회원가입', exact: true }).click();
   await snapshot();
   assert.equal(await page.getByRole('heading', { name: '회원가입', exact: true }).isVisible(), true);
@@ -78,6 +85,7 @@ export async function checkAuth(tab, credentials) {
   );
   await page.getByRole('link', { name: '로그인', exact: true }).last().click();
   await snapshot();
+  // 이후는 실제 계정이 있을 때만: 로그인, 새로고침 유지, 계정 메뉴 열고 닫기
   if (!credentials) return;
   await page.getByLabel('아이디', { exact: true }).fill(credentials.username);
   await page.getByLabel('비밀번호', { exact: true }).fill(credentials.password);
@@ -100,6 +108,7 @@ export async function checkAuth(tab, credentials) {
     await page.locator('.account-panel').getByRole('button', { name: '로그아웃', exact: true }).isVisible(),
     false
   );
+  // 로그아웃하면 채팅·활동 선택 버튼이 사라지고 뒤로 가기로도 되살아나지 않음
   await tab.goto('http://127.0.0.1:8765/#/workspace/1/calendar');
   await snapshot();
   assert.equal(await page.locator('#chat-sidebar').isVisible(), true);
@@ -112,6 +121,7 @@ export async function checkAuth(tab, credentials) {
   await tab.back();
   await snapshot();
   assert.equal(await account().count(), 0, 'Back cannot restore authenticated content');
+  // 로그인이 필요한 경로는 모두 로그인 화면과 접근 안내로 바뀜
   for (const route of ['#/workspace/1/document?room=1', '#/settings', '#/calendar', '#/reservation', '#/ai']) {
     await tab.goto(`http://127.0.0.1:8765/${route}`);
     await snapshot();

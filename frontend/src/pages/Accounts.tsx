@@ -1,15 +1,19 @@
+// 설정 화면의 계정 영역. 내 비밀번호 변경(MyAccount)과 임원진 전용 계정 관리(AccountAdmin)를 맡는다.
+// 계정 관리: 가입 승인, 계정 발급, 아이디·이름·역할·로그인 허용 변경, 비밀번호 초기화.
 import { Fragment, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { changePassword, createAccount, listAccounts, resetPassword, updateAccount, USERNAME_PATTERN } from '../api';
 import type { ApiUser, Role } from '../api';
 import { Field, Select } from '../ui';
 
+// 역할 표시 이름과 역할 선택 상자 항목
 const ROLE_LABEL: Record<Role, string> = { officer: '임원진', member: '일반 부원' };
 const ROLES: [Role, string][] = [
   ['member', ROLE_LABEL.member],
   ['officer', ROLE_LABEL.officer]
 ];
 
+// 처리 결과 문구를 사용자에게 알리는 콜백
 type Notify = (message: string) => void;
 
 // 제출 중 표시와 오류 문구를 폼마다 같은 방식으로 다룬다. 실패하면 비밀번호 입력은 비운다.
@@ -35,9 +39,12 @@ function useSubmit(action: (data: FormData, form: HTMLFormElement) => Promise<vo
   return { error, pending, submit };
 }
 
+// 폼 값을 문자열로 꺼낸다(없으면 빈 문자열).
 const text = (data: FormData, key: string) => String(data.get(key) ?? '');
 
+/** 설정 화면의 '내 계정' 영역. 이름·아이디·역할을 보여 주고 비밀번호를 바꾼다. */
 export function MyAccount({ account, notify }: { account: ApiUser; notify: Notify }) {
+  // 새 비밀번호 확인이 맞고 현재 비밀번호와 다를 때만 서버에 변경을 요청한다.
   const { error, pending, submit } = useSubmit(async (data, form) => {
     const current = text(data, 'currentPassword'),
       next = text(data, 'newPassword');
@@ -95,21 +102,27 @@ export function MyAccount({ account, notify }: { account: ApiUser; notify: Notif
   );
 }
 
+/** 임원진 전용 계정 관리. 전체 계정 목록에서 가입 승인, 계정 발급, 계정별 정보 수정을 한다. */
 export function AccountAdmin({ me, notify, onSelfChange }: { me: ApiUser; notify: Notify; onSelfChange: () => void }) {
+  // 계정 목록(불러오기 전에는 null)과 불러오기 오류
   const [accounts, setAccounts] = useState<ApiUser[] | null>(null),
     [loadError, setLoadError] = useState('');
+  // 발급 폼 열림 여부, 관리 패널을 연 계정, 승인 요청 중인 계정
   const [creating, setCreating] = useState(false),
     [editing, setEditing] = useState<number | null>(null),
     [approving, setApproving] = useState<number | null>(null);
+  // 화면을 열 때 서버에서 계정 목록을 한 번 불러온다.
   useEffect(() => {
     listAccounts()
       .then(setAccounts)
       .catch((error: Error) => setLoadError(error.message));
   }, []);
+  // 서버가 돌려준 계정으로 목록을 갱신하고, 내 계정이 바뀌었으면 onSelfChange로 알린다.
   function saved(account: ApiUser) {
     setAccounts(list => list?.map(item => (item.id === account.id ? account : item)) ?? null);
     if (account.id === me.id) onSelfChange();
   }
+  // 가입 승인: 대기 계정의 로그인을 허용한다.
   async function approve(account: ApiUser) {
     setApproving(account.id);
     try {
@@ -126,6 +139,7 @@ export function AccountAdmin({ me, notify, onSelfChange }: { me: ApiUser; notify
   const waiting = accounts?.filter(account => !account.isActive).length ?? 0;
   return (
     <section className="settings-block" aria-labelledby="account-admin-title">
+      {/* 제목과 계정 발급 폼 열기/닫기 */}
       <div className="settings-row">
         <div>
           <h2 id="account-admin-title">계정 관리</h2>
@@ -146,6 +160,7 @@ export function AccountAdmin({ me, notify, onSelfChange }: { me: ApiUser; notify
           }}
         />
       )}
+      {/* 불러오기 오류, 로그인 대기 계정 수, 불러오는 중 안내 */}
       {loadError && (
         <p className="form-error" role="alert">
           {loadError}
@@ -157,6 +172,7 @@ export function AccountAdmin({ me, notify, onSelfChange }: { me: ApiUser; notify
         </p>
       )}
       {!accounts && !loadError && <p className="note-line">계정 목록을 불러오고 있어요.</p>}
+      {/* 계정 표: 행마다 승인·관리 버튼, 관리를 누르면 바로 아래 행에 수정 폼이 열린다. */}
       {ordered && (
         <div className="table-wrap">
           <table className="data-table account-table">
@@ -224,6 +240,7 @@ export function AccountAdmin({ me, notify, onSelfChange }: { me: ApiUser; notify
   );
 }
 
+// 계정 발급 폼. 임원진이 만든 계정은 가입 승인 없이 바로 로그인할 수 있다.
 function CreateAccount({ onCreated }: { onCreated: (account: ApiUser) => void }) {
   const { error, pending, submit } = useSubmit(async data => {
     const role = text(data, 'role') === 'officer' ? 'officer' : 'member';
@@ -272,6 +289,8 @@ function CreateAccount({ onCreated }: { onCreated: (account: ApiUser) => void })
   );
 }
 
+// 계정 한 개의 관리 패널: 정보(아이디·이름·역할·로그인 허용) 변경과 비밀번호 초기화.
+// self는 관리 대상이 로그인한 임원진 자신인지 여부.
 function EditAccount({
   account,
   self,
@@ -283,6 +302,7 @@ function EditAccount({
   notify: Notify;
   onSaved: (account: ApiUser) => void;
 }) {
+  // 정보 저장: 기존 값과 달라진 항목만 모아 서버에 보낸다.
   const info = useSubmit(async data => {
     const role: Role = text(data, 'role') === 'officer' ? 'officer' : 'member';
     const changes: Partial<Pick<ApiUser, 'username' | 'name' | 'role' | 'isActive'>> = {};
@@ -301,6 +321,7 @@ function EditAccount({
     onSaved(await updateAccount(account.id, changes));
     notify(`${name} 계정 정보를 저장했어요.`);
   });
+  // 비밀번호 초기화: 임원진이 정한 새 비밀번호로 바꾼다.
   const reset = useSubmit(async (data, form) => {
     await resetPassword(account.id, text(data, 'newPassword'));
     form.reset();
@@ -308,6 +329,7 @@ function EditAccount({
   });
   return (
     <div className="account-edit">
+      {/* 정보 변경 폼. 자기 계정이면 역할·로그인 허용은 잠근다. */}
       <form aria-label={`${account.name} 계정 정보 변경`} onSubmit={info.submit}>
         <div className="form-grid">
           <Field
@@ -337,6 +359,7 @@ function EditAccount({
           {info.pending ? '저장 중' : '정보 저장'}
         </button>
       </form>
+      {/* 비밀번호 초기화 폼(다른 사람 계정에만 표시) */}
       {!self && (
         <form aria-label={`${account.name} 비밀번호 초기화`} onSubmit={reset.submit}>
           <Field

@@ -1,18 +1,23 @@
+// 로그인 전 화면(비로그인 홈·진행 중 활동 목록·로그인·회원가입)과 상단 계정 메뉴.
+// 실제 로그인·가입 요청은 App에서 넘겨받은 signIn·signUp이 처리한다.
 import { useId, useRef, useState } from 'react';
 import type { Session, Workspace } from './model';
 import { USERNAME_PATTERN } from './api';
 import { name } from './model';
 import { Empty, Field, Icon } from './ui';
 
+// 비로그인 홈의 기능 카드와 로그인 화면 소개 목록에 함께 쓰는 문구
 const features = [
   { icon: 'waffle', title: '함께하는 활동', text: '프로젝트와 스터디의 일정, 대화, 회의록을 한곳에서 관리해요.' },
   { icon: 'calendar', title: '내 일정 한눈에', text: '참여하는 활동의 일정을 모으고 중요한 일정은 즐겨찾기해요.' },
   { icon: 'reservation', title: '동아리방 예약', text: '사용 가능한 시간을 확인하고 활동에 필요한 공간을 예약해요.' }
 ] as const;
 
+/** 비로그인 사용자의 첫 화면. 서비스 소개와 로그인·활동 목록으로 가는 링크를 보여 준다. */
 export function GuestHome() {
   return (
     <div className="guest-home">
+      {/* 소개 문구와 로그인·활동 목록 이동 버튼 */}
       <section className="welcome-hero" aria-labelledby="welcome-title">
         <span className="tag">CERT-IS · 동아리 활동 공간</span>
         <h1 id="welcome-title">
@@ -35,6 +40,7 @@ export function GuestHome() {
         </div>
         <small className="note-line">로그인하면 내 활동과 개인 일정을 확인할 수 있어요.</small>
       </section>
+      {/* 주요 기능 소개 카드 */}
       <div className="welcome-features">
         {features.map(feature => (
           <section key={feature.title}>
@@ -46,6 +52,7 @@ export function GuestHome() {
           </section>
         ))}
       </div>
+      {/* 하단 로그인 안내 */}
       <section className="guest-login-widget" aria-label="로그인 안내">
         <div>
           <h2>내 활동을 이어갈 준비가 됐나요?</h2>
@@ -59,6 +66,7 @@ export function GuestHome() {
   );
 }
 
+/** 로그인 없이 보는 진행 중 활동 목록. 카드를 누르면 로그인 화면으로 이동한다. */
 export function GuestActivities({ activities }: { activities: Workspace[] }) {
   const ongoing = activities.filter(activity => activity.status === '진행 중');
   return (
@@ -71,6 +79,7 @@ export function GuestActivities({ activities }: { activities: Workspace[] }) {
           </div>
           <span className="tag">{ongoing.length}개 활동</span>
         </div>
+        {/* 활동 카드: 유형·분야·목표 요약 */}
         <div className="guest-activity-grid">
           {ongoing.map(activity => (
             <a
@@ -100,6 +109,7 @@ export function GuestActivities({ activities }: { activities: Workspace[] }) {
   );
 }
 
+/** 로그인 화면. restricted면 로그인이 필요한 화면에서 넘어왔다는 안내를 보여 준다. */
 export function LoginPage({
   restricted,
   signIn
@@ -107,6 +117,7 @@ export function LoginPage({
   restricted: boolean;
   signIn: (username: string, password: string) => Promise<void>;
 }) {
+  // 오류 문구와 로그인 요청 중 여부
   const [error, setError] = useState(''),
     [pending, setPending] = useState(false);
   return (
@@ -117,6 +128,7 @@ export function LoginPage({
         <p className="login-description">
           {restricted ? '이 화면은 로그인 후 이용할 수 있어요.' : 'CERT-IS 계정으로 활동 공간에 들어오세요.'}
         </p>
+        {/* 아이디·비밀번호를 signIn에 넘기고, 요청이 끝날 때까지 버튼을 잠근다. */}
         <form
           aria-label="계정 로그인"
           onSubmit={async event => {
@@ -163,6 +175,7 @@ export function LoginPage({
             {pending ? '로그인 중' : '로그인'} <Icon name="right" />
           </button>
         </form>
+        {/* 회원가입·비밀번호 문의 안내 */}
         <div className="login-help">
           <p>
             아직 계정이 없나요? <a href="#/signup">회원가입</a> 후 운영진이 승인하면 로그인할 수 있어요.
@@ -174,6 +187,7 @@ export function LoginPage({
   );
 }
 
+// 로그인·회원가입 화면에 함께 붙는 서비스 소개 영역(기능 목록, 홈으로 돌아가기)
 function LoginIntro() {
   return (
     <section className="login-intro">
@@ -205,11 +219,13 @@ function LoginIntro() {
   );
 }
 
+/** 회원가입 화면. 신청을 마치면 운영진 승인을 기다리라는 안내로 바뀐다. */
 export function SignupPage({
   signUp
 }: {
   signUp: (account: { username: string; name: string; password: string }) => Promise<void>;
 }) {
+  // done: 가입 신청을 마친 아이디(비어 있으면 아직 입력 중)
   const [error, setError] = useState(''),
     [pending, setPending] = useState(false),
     [done, setDone] = useState('');
@@ -218,6 +234,7 @@ export function SignupPage({
       <LoginIntro />
       <section className="login-card" aria-labelledby="signup-title">
         <h1 id="signup-title">회원가입</h1>
+        {/* 신청 완료 후에는 승인 대기 안내, 그 전에는 가입 폼 */}
         {done ? (
           <div className="signup-done" role="status">
             <p>
@@ -238,10 +255,12 @@ export function SignupPage({
                 const form = event.currentTarget,
                   data = new FormData(form),
                   text = (key: string) => String(data.get(key) || '');
+                // 오류가 나면 비밀번호·확인 칸을 모두 비운다.
                 const clearPasswords = () =>
                   form.querySelectorAll<HTMLInputElement>('input[type=password]').forEach(input => {
                     input.value = '';
                   });
+                // 비밀번호 확인이 다르면 서버에 보내지 않는다.
                 if (text('password') !== text('confirmPassword')) {
                   setError('비밀번호와 확인 값이 달라요.');
                   clearPasswords();
@@ -310,7 +329,9 @@ export function SignupPage({
   );
 }
 
+/** 상단 계정 메뉴. 비로그인이면 로그인 버튼, 로그인하면 이름 버튼과 설정·로그아웃 패널을 보여 준다. */
 export function AccountWidget({ session, logout }: { session: Session | null; logout: () => void }) {
+  // 이름 버튼과 계정 패널(popover)을 잇는 id, 메뉴를 고른 뒤 패널을 닫을 때 쓰는 참조
   const id = useId(),
     panel = useRef<HTMLDivElement>(null);
   if (!session)
@@ -334,6 +355,7 @@ export function AccountWidget({ session, logout }: { session: Session | null; lo
         <span className="account-name">{name(session.userId)}</span>
         <Icon name="down" />
       </button>
+      {/* 계정 패널: 이름·역할 요약과 설정·로그아웃. 항목을 누르면 패널을 닫는다. */}
       <div id={id} ref={panel} popover="auto" className="account-panel" aria-label="내 계정">
         <div className="account-summary">
           <strong>{name(session.userId)}</strong>

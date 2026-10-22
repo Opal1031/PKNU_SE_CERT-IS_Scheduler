@@ -1,3 +1,5 @@
+// model.ts(활동·일정·예약·회의록 규칙)와 recommend.ts(AI 설문 점수)를 화면 없이 확인하는 Node 테스트.
+// package.json의 test 스크립트(node --test)로 실행하며, localStorage는 아래 메모리 구현으로 대신한다.
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { rankSurvey, surveyFields, surveyQuestions } from '../src/recommend.ts';
@@ -32,6 +34,7 @@ import {
   workspace
 } from '../src/model.ts';
 
+// 메모리 localStorage. unavailable을 켜면 저장(setItem)이 실패해 저장 공간 부족을 흉내 낸다.
 const values = new Map<string, string>();
 let unavailable = false;
 Object.defineProperty(globalThis, 'localStorage', {
@@ -49,20 +52,24 @@ Object.defineProperty(globalThis, 'localStorage', {
     }
   }
 });
+// 일반 부원·임원진 세션
 const me = { userId: 'me', officer: false },
   officer = { ...me, officer: true };
+// 객체를 FormData로 바꾼다. 배열 값은 같은 키로 여러 번 넣는다.
 function form(data: Record<string, string | string[]>) {
   const f = new FormData();
   for (const [key, value] of Object.entries(data))
     for (const item of Array.isArray(value) ? value : [value]) f.append(key, item);
   return f;
 }
+// 테스트마다 저장소를 비우고 샘플 자료로 되돌린다.
 beforeEach(() => {
   unavailable = false;
   values.clear();
   resetModel();
 });
 
+// AI 설문 점수 계산과 저장된 설정(설문 응답·캘린더 즐겨찾기) 읽기
 test('survey uses the documented weights, scores, unknown exclusions and shared ranks', () => {
   assert.equal(surveyQuestions.length, 15);
   assert.deepEqual(
@@ -133,6 +140,7 @@ test('personal calendar pins load old preferences and preserve separate users wi
   assert.deepEqual(loadPreferences().calendarPins, {});
 });
 
+// 이전 저장 자료 변환, 활동 생성·구성원 변경
 test('legacy storage keeps content and supplies stable IDs, roles and external examples', () => {
   const old = fresh();
   delete (old as Partial<typeof old>).schemaVersion;
@@ -179,6 +187,7 @@ test('roster removal prunes room access, preserves records and requires a remain
   assert.ok(m.rooms.filter(r => r.workspaceId === 1).every(r => r.memberIds.every(x => x === 'me')));
   assert.equal(room(m, 1)!.messages.length, messages);
 });
+// 동아리방 예약 시간 검사와 저장
 test('reservation interval excludes adjacent and cancelled records; rejects overlap and invalid times', () => {
   const m = fresh();
   m.bookings = [
@@ -242,6 +251,7 @@ test('reservation save checks the latest local snapshot and cancellation frees i
   assert.doesNotThrow(() => applyForm({ kind: 'booking' }, f, me));
 });
 
+// 캘린더에 예약 표시
 test('calendar reads saved bookings directly and follows creation, edits and cancellation', () => {
   const f = { workspaceId: '1', date: '2099-02-02', start: '23:30', end: '24:00', purpose: '팀 회의' };
   applyForm({ kind: 'booking' }, form(f), me);
@@ -331,6 +341,7 @@ test('calendar bookings respect membership, owner filters, team scope and office
     [0]
   );
 });
+// 회의록 초안·저장, 저장 실패·읽기 실패 시 원본 보존
 test('user/room drafts stay separate and only explicit saving changes the document version', () => {
   const saved = getSnapshot().documents[1],
     version = getSnapshot().documentMeta[1].version;
@@ -388,6 +399,7 @@ test('explicit reset clears the read failure only after successfully replacing s
   assert.deepEqual(getSnapshot(), normalize(JSON.parse(values.get(STORE)!)));
   assert.doesNotThrow(() => saveDocument(1, '초기화 후 저장', 1, me));
 });
+// 임원진·보관 활동의 조회·수정 권한
 test('officer personal calendar defaults to membership; explicit operational scope still hides private events', () => {
   const m = fresh();
   m.events.push({
@@ -427,6 +439,7 @@ test('external officer cannot save a document; archived workspace is read only',
   assert.throws(() => saveDocument(1, '보관 변경', 1, me), /조회 전용/);
 });
 
+// 활동 참가 신청
 test('participation requests persist without granting access, reject duplicates and can be approved by the leader', () => {
   const request = { kind: 'workspace-apply' as const, workspaceId: 4 };
   applyForm(request, form({}), me);
@@ -466,6 +479,7 @@ test('request storage failure leaves no pending request', () => {
   assert.deepEqual(workspace(getSnapshot(), 4)!.applicantIds, []);
 });
 
+// 홈 D-day 목록과 서버 계정 ↔ 로컬 사용자 연결
 test('D-day sorts unfinished deadlines and respects membership and private event visibility', () => {
   const m = fresh();
   m.events = [];

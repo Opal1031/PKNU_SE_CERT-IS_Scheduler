@@ -1,8 +1,12 @@
+// 전역 탐색과 활동 선택 팝업 브라우저 점검. 로그인한 로컬 앱 탭에서 checkNavigation(tab),
+// checks/activity-names.html을 연 탭에서 checkActivityNames(tab)을 실행한다.
 import assert from 'node:assert/strict';
 
+/** 전역 메뉴 이동, 활동 생성, 활동 선택 팝업(위치·검색·닫기·활동 진입)을 점검한다. */
 // Run with the local app's cua_repl tab: await checkNavigation(tab).
 export async function checkNavigation(tab) {
   const page = tab.playwright;
+  // 전역 메뉴: 이동한 메뉴에 현재 위치 표시, 활동 채팅은 나오지 않음
   for (const label of ['CERT-IS 홈', '달력', '예약', 'AI 설문']) {
     await page.getByRole('link', { name: label, exact: true }).first().click();
     await page.domSnapshot();
@@ -15,6 +19,7 @@ export async function checkNavigation(tab) {
   assert.equal(await page.locator('#global-sidebar').getByRole('link', { name: '홈', exact: true }).count(), 0);
   assert.equal(await page.locator('.brand-logo').evaluate(el => el.complete && el.naturalWidth > 0), true);
   assert.equal(await page.locator('.nav-divider span').count(), 2);
+  // 활동 생성 버튼, 활동 선택 팝업의 위치·크기·3열 격자
   await page.getByRole('button', { name: '프로젝트 및 스터디 생성', exact: true }).click();
   await page.domSnapshot();
   assert.equal(await page.getByRole('heading', { name: '활동 생성', exact: true }).isVisible(), true);
@@ -50,6 +55,7 @@ export async function checkNavigation(tab) {
   await page.getByRole('button', { name: '프로젝트 및 스터디 생성', exact: true }).last().click();
   await page.domSnapshot();
   assert.equal(await page.getByRole('heading', { name: '활동 생성', exact: true }).isVisible(), true);
+  // 팝업 검색 결과 없음 안내, Esc로 닫으면 여는 버튼으로 포커스 복귀
   await page.getByRole('button', { name: '닫기', exact: true }).first().click();
   await page.getByRole('button', { name: '프로젝트 및 스터디', exact: true }).click();
   await page.getByRole('button', { name: '활동 검색', exact: true }).click();
@@ -64,6 +70,7 @@ export async function checkNavigation(tab) {
   await page.domSnapshot();
   assert.equal(await page.locator('#modal').count(), 0);
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'workspace-launcher');
+  // 팝업 밖 링크를 누르면 팝업이 닫히고 포커스는 그 링크에 남음
   await page.getByRole('button', { name: '프로젝트 및 스터디', exact: true }).click();
   await page.domSnapshot();
   await page.getByRole('link', { name: '예약', exact: true }).click();
@@ -75,6 +82,7 @@ export async function checkNavigation(tab) {
     '#/reservation',
     'Outside link keeps keyboard focus'
   );
+  // 활동을 고르면 팝업이 닫히고 그 활동의 채팅이 열림(현재 활동을 다시 골라도 닫힘)
   await page.getByRole('button', { name: '프로젝트 및 스터디', exact: true }).click();
   await page.domSnapshot();
   const study = page.getByRole('link', { name: '네트워크 보안 · 스터디', exact: true });
@@ -93,9 +101,11 @@ export async function checkNavigation(tab) {
   assert.equal(await page.locator('#chat-sidebar').count(), 0);
 }
 
+/** 활동 타일 이름의 줄바꿈·넘침과 긴 이름 툴팁(키보드 포커스로 표시, Esc·이동 시 닫힘)을 점검한다. */
 // Open /checks/activity-names.html, then await checkActivityNames(tab).
 export async function checkActivityNames(tab) {
   const page = tab.playwright;
+  // 이름 칸: 같은 높이, keep-all·balance 줄바꿈, 끊김 없는 영문도 타일 밖으로 넘치지 않음
   await page.getByRole('button', { name: '이름 확인', exact: true }).click();
   await page.domSnapshot();
   const names = await page.evaluate(() =>
@@ -119,6 +129,7 @@ export async function checkActivityNames(tab) {
   await page.getByRole('button', { name: '닫기', exact: true }).press('Tab');
   await page.domSnapshot();
   assert.equal(await page.locator('.activity-tooltip:popover-open').count(), 0, 'Short names need no tooltip');
+  // 긴 이름에 포커스하면 화면 안에 툴팁 표시, Esc는 툴팁만 닫음
   await page.getByRole('link', { name: '짧은 이름 · 프로젝트', exact: true }).press('Tab');
   await page.domSnapshot();
   const tooltip = page.locator('.activity-tooltip:popover-open');

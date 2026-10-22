@@ -1,7 +1,10 @@
+// api.ts의 토큰 처리 테스트: JWT 만료 시각 읽기, 서버가 토큰을 거절(401)할 때의 세션 만료 처리.
+// fetch와 전역 dispatchEvent를 바꿔 끼워 백엔드 없이 node --test로 실행한다.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { changePassword, getToken, login, SESSION_EXPIRED, tokenExpiresAt } from '../src/api.ts';
 
+// 발생한 이벤트 이름을 모아 세션 만료 알림 여부를 확인한다.
 const events: string[] = [];
 Object.defineProperty(globalThis, 'dispatchEvent', {
   value: (event: Event) => {
@@ -11,8 +14,10 @@ Object.defineProperty(globalThis, 'dispatchEvent', {
   configurable: true
 });
 
+// 만료 시각은 payload만 읽으므로 가짜 서명을 붙인 JWT 모양의 토큰을 만든다.
 const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
 const token = (payload: object) => `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode(payload)}.signature`;
+// 다음 fetch가 돌려줄 응답(상태 코드·본문)을 정한다.
 function respond(status: number, body?: unknown) {
   globalThis.fetch = async () => new Response(body === undefined ? null : JSON.stringify(body), { status });
 }

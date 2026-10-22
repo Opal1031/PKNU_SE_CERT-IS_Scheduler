@@ -1,27 +1,31 @@
+// 달력·예약 화면 브라우저 점검. 샘플 일정·예약을 넣은 checks/schedule.html을 연 탭에서
+// checkSchedule, checkCalendarBookings, checkCalendarPins를 실행한다.
 import assert from 'node:assert/strict';
 
+/** 월간 달력 격자·날짜 상세와 예약 시간표(머리글·월 구분·예약 칸·추가 로드·날짜 이동)를 점검한다. */
 // Open /checks/schedule.html in cua_repl, then await checkSchedule(tab).
 export async function checkSchedule(tab) {
   const page = tab.playwright;
+  // 달력: 격자 칸 수, 칸당 미리보기 2개, +n을 누르면 그날 일정 전체 표시
   await page.getByRole('button', { name: '즐겨찾기 검사 초기화', exact: true }).click();
   await page.domSnapshot();
-  const month = await page
-    .locator('.month-calendar')
-    .evaluate(el => ({
-      height: el.clientHeight,
-      bottom: el.getBoundingClientRect().bottom,
-      viewport: window.innerHeight,
-      weeks: Number(getComputedStyle(el).getPropertyValue('--weeks'))
-    }));
+  const month = await page.locator('.month-calendar').evaluate(el => ({
+    height: el.clientHeight,
+    bottom: el.getBoundingClientRect().bottom,
+    viewport: window.innerHeight,
+    weeks: Number(getComputedStyle(el).getPropertyValue('--weeks'))
+  }));
   assert.equal(await page.locator('.calendar-day').count(), month.weeks * 7);
   const dense = page.locator('.calendar-day.selected');
   assert.equal(await dense.locator('.calendar-event').count(), 2);
   await dense.locator('.calendar-count').click();
   await page.domSnapshot();
   assert.equal(await page.locator('.calendar-aside .event-row').count(), 6, 'Day details retain every event');
+  // 다음 달로 넘기면 1일이 선택됨
   await page.getByRole('button', { name: '다음 달', exact: true }).click();
   await page.domSnapshot();
   assert.equal(await page.locator('.calendar-day.selected .day-button').innerText({}), '1');
+  // 예약 시간표: 09~24시 머리글, 28일 행, 월 구분선, 날짜 표기
   await page.getByRole('button', { name: '예약 확인', exact: true }).click();
   await page.domSnapshot();
   assert.equal(await page.locator('.reservation-time-row .time-label').count(), 15);
@@ -47,6 +51,7 @@ export async function checkSchedule(tab) {
     JSON.stringify(months)
   );
   assert.match(await page.locator('.reservation-date strong').first().innerText({}), /^\d{1,2}\([월화수목금토일]\)$/);
+  // 예약 칸: 하루 30칸·24:00 마감, 여러 칸에 걸친 예약, 소유자 표시, 취소 구간, 빈 칸 신청
   const empty = page.locator('.reservation-day-row').nth(2);
   assert.equal(await empty.locator('.booking-slot').count(), 30);
   assert.match(await empty.locator('[data-start="23:30"]').getAttribute('title'), /23:30~24:00/);
@@ -82,6 +87,7 @@ export async function checkSchedule(tab) {
     date,
     start: '11:30'
   });
+  // 스크롤하면 날짜가 더 붙고, 시간 머리글과 현재 월 구분선은 위에 고정됨
   await page.locator('.reservation-board-wrap').press('End');
   // 키보드 스크롤 뒤 React가 추가 날짜 행을 반영한 후 확인한다.
   await page.locator('.reservation-day-row').nth(28).waitFor({ state: 'attached' });
@@ -116,6 +122,7 @@ export async function checkSchedule(tab) {
     pinnedMonth.expected,
     'The new month replaces the pinned heading below the time header'
   );
+  // 시작 날짜를 바꾸면 그날부터 다시 그리고 맨 위로 스크롤, 지난 칸은 비활성
   await page.getByLabel('예약 시작 날짜').fill('2000-01-01');
   // Native date inputs commit a real change through keyboard/picker input.
   await page.getByLabel('예약 시작 날짜').press('ArrowUp');
@@ -132,23 +139,27 @@ export async function checkSchedule(tab) {
     0,
     'Date jump resets scroll'
   );
+  // '오늘'로 돌아오기
   await page.getByRole('button', { name: '오늘', exact: true }).click();
   await page.domSnapshot();
   assert.equal(await page.locator('.reservation-day-row.today').count(), 1);
 }
 
+/** 예약이 달력(월간 칸·날짜 상세·목록)에 일정처럼 보이고 누르면 예약 정보를 여는지 점검한다. */
 export async function checkCalendarBookings(tab) {
   const page = tab.playwright;
   await page.getByRole('button', { name: '즐겨찾기 검사 초기화', exact: true }).click();
   await page.getByRole('button', { name: '달력 확인', exact: true }).click();
   await page.getByRole('button', { name: '오늘', exact: true }).click();
   await page.domSnapshot();
+  // 월간 칸의 예약
   await page.locator('.calendar-event[data-event-id="booking:mine"]').click();
   await page.domSnapshot();
   assert.deepEqual(JSON.parse(await page.getByLabel('선택한 동작').innerText({})), {
     kind: 'booking-info',
     id: 'mine'
   });
+  // 날짜 상세의 예약. 다른 활동·취소된 예약은 보이지 않음
   const bookingDay = page.locator('.calendar-day').filter({ has: page.locator('[data-event-id="booking:mine"]') });
   const bookingDate = await bookingDay.getAttribute('data-date');
   await bookingDay.locator('.day-button').click();
@@ -168,6 +179,7 @@ export async function checkCalendarBookings(tab) {
     await page.locator('[data-event-id="booking:external"], [data-event-id="booking:cancelled"]').count(),
     0
   );
+  // 내 담당 필터·팀 달력에서도 내 예약은 남고 남의 예약은 빠짐
   await page.getByRole('button', { name: '내 담당 필터 전환', exact: true }).click();
   await page.domSnapshot();
   assert.equal(await page.locator('.calendar-aside [data-event-id="booking:late"]').count(), 0);
@@ -175,6 +187,7 @@ export async function checkCalendarBookings(tab) {
   await page.getByRole('button', { name: '팀 달력 전환', exact: true }).click();
   await page.domSnapshot();
   assert.equal(await row.count(), 1);
+  // 목록 보기의 예약(예약이 다음 달이면 달을 넘겨서 확인)
   await page.getByRole('button', { name: '내 담당 필터 전환', exact: true }).click();
   await page.getByRole('button', { name: '목록 보기', exact: true }).click();
   await page.domSnapshot();
@@ -190,12 +203,14 @@ export async function checkCalendarBookings(tab) {
   });
 }
 
+/** 개인 캘린더 즐겨찾기: 여러 개 고정, 새로고침 유지, 사용자별 분리, 팀 달력 미적용, 목록·월간 공유 */
 export async function checkCalendarPins(tab) {
   const page = tab.playwright;
   await page.getByRole('button', { name: '즐겨찾기 검사 초기화', exact: true }).click();
   await page.getByRole('button', { name: '달력 확인', exact: true }).click();
   await page.getByRole('button', { name: '오늘', exact: true }).click();
   await page.domSnapshot();
+  // 오늘 일정 4개를 즐겨찾기하면 모두 칸에 보이고 칸 높이가 늘어남
   const date = await page.locator('.calendar-day.selected').getAttribute('data-date');
   const cell = page.locator(`.calendar-day[data-date="${date}"]`),
     initialHeight = await cell.evaluate(el => el.clientHeight);
@@ -213,6 +228,7 @@ export async function checkCalendarPins(tab) {
     (await page.locator('.calendar-event.pinned[data-event-id="dense-5"]').count()) >= 2,
     'Multi-day favorite appears on every covered day'
   );
+  // 새로고침·사용자 전환 후에도 사용자별로 유지
   await tab.reload();
   await page.domSnapshot();
   assert.equal(await cell.locator('.calendar-event.pinned').count(), 4, 'Reload preserves multiple pins');
@@ -222,6 +238,7 @@ export async function checkCalendarPins(tab) {
   await page.getByRole('button', { name: '사용자 전환', exact: true }).click();
   await page.domSnapshot();
   assert.equal(await cell.locator('.calendar-event.pinned').count(), 4);
+  // 내 담당 필터에서도 즐겨찾기는 보이고, 팀 달력에는 적용되지 않음
   await page.getByRole('button', { name: '내 담당 필터 전환', exact: true }).click();
   await page.domSnapshot();
   assert.equal(
@@ -234,6 +251,7 @@ export async function checkCalendarPins(tab) {
   await page.domSnapshot();
   assert.equal(await page.locator('.event-pin').count(), 0);
   assert.equal(await page.locator('.calendar-event.pinned').count(), 0, 'Personal pins do not affect team calendar');
+  // 즐겨찾기를 모두 풀면 원래 높이로 돌아오고, 목록 보기에서 건 핀은 월간 보기에도 반영
   await page.getByRole('button', { name: '팀 달력 전환', exact: true }).click();
   await page.domSnapshot();
   for (const i of [2, 3, 4, 5]) {
