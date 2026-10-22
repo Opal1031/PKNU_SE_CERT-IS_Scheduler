@@ -1,6 +1,10 @@
+// 여러 화면이 함께 쓰는 공통 UI 조각: 아이콘, 라벨 붙은 폼 입력 요소, 페이지 제목,
+// 빈 상태 안내, 페이지 공통 props 타입, 회의록용 간단한 마크다운 미리보기.
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
 import type { Id, Model, ModalState, Preferences, Session } from './model';
 import { name } from './model';
+
+// 아이콘 이름별 SVG path 데이터(24×24 좌표 기준)
 const paths = {
   home: 'm3 10 9-7 9 7v10H6V10m3 10v-7h6v7',
   calendar: 'M4 5h16v16H4zM4 10h16M8 2v6m8-6v6',
@@ -26,6 +30,7 @@ const paths = {
   down: 'm4 9 8 8 8-8'
 };
 export type IconName = keyof typeof paths;
+/** 이름으로 고르는 16px 선 아이콘. 장식용이라 스크린리더에서는 숨긴다. */
 export function Icon({ name: kind }: { name: IconName }) {
   return (
     <svg
@@ -43,6 +48,7 @@ export function Icon({ name: kind }: { name: IconName }) {
     </svg>
   );
 }
+/** 아이콘만 있는 버튼. title 을 툴팁과 접근성 이름으로 함께 쓴다. */
 export function IconButton({
   title,
   icon = 'settings',
@@ -67,6 +73,7 @@ export function IconButton({
     </button>
   );
 }
+/** 라벨이 붙은 한 줄 입력칸. */
 export function Field({ label, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
     <label className="form-field">
@@ -75,6 +82,7 @@ export function Field({ label, ...props }: InputHTMLAttributes<HTMLInputElement>
     </label>
   );
 }
+/** 라벨이 붙은 여러 줄 입력칸(최대 3000자). 값은 폼 제출 시 읽는다. */
 export function Area({ label, name: fieldName, value }: { label: string; name: string; value?: string }) {
   return (
     <label className="form-field">
@@ -83,6 +91,7 @@ export function Area({ label, name: fieldName, value }: { label: string; name: s
     </label>
   );
 }
+/** 라벨이 붙은 선택 상자. 항목은 문자열 또는 [값, 표시 문구] 쌍. */
 export function Select({
   label,
   items,
@@ -104,6 +113,7 @@ export function Select({
     </label>
   );
 }
+/** 사용자 체크박스 목록. onChange 가 있으면 selected 로 체크 상태를 제어하고, 없으면 초기값으로만 쓴다. */
 export function Checks({
   fieldName,
   ids,
@@ -132,6 +142,7 @@ export function Checks({
     </div>
   );
 }
+/** 페이지 제목과 오른쪽 버튼 영역. */
 export function Heading({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="page-heading">
@@ -140,9 +151,11 @@ export function Heading({ title, children }: { title: string; children?: ReactNo
     </div>
   );
 }
+/** 내용이 없거나 접근할 수 없을 때 보여 주는 안내 문구. */
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="empty-state">{children}</div>;
 }
+/** 페이지 컴포넌트가 공통으로 받는 props: 자료, 세션, 화면 설정, 대화상자 열기, 알림. */
 export interface ViewProps {
   model: Model;
   session: Session;
@@ -151,6 +164,7 @@ export interface ViewProps {
   open: (modal: ModalState) => void;
   notify: (message: string) => void;
 }
+// 한 줄 안의 **굵게**와 `인라인 코드` 표시를 요소로 바꾼다.
 function inline(text: string): ReactNode[] {
   return text
     .split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
@@ -164,11 +178,13 @@ function inline(text: string): ReactNode[] {
       )
     );
 }
+/** 회의록 미리보기용 마크다운 렌더러. 제목(#~###), 코드 블록, 목록(- ), 굵게, 인라인 코드만 지원. */
 // ponytail: basic Markdown only; use a maintained parser when full Markdown becomes required.
 export function Markdown({ body }: { body: string }) {
   const result: ReactNode[] = [];
   let code: string[] | undefined;
   for (const [i, line] of body.split('\n').entries()) {
+    // 코드 블록: ``` 사이의 줄을 모았다가 닫히면 <pre> 하나로 출력
     if (line.startsWith('```')) {
       if (code) {
         result.push(<pre key={i}>{code.join('\n')}</pre>);
@@ -180,6 +196,7 @@ export function Markdown({ body }: { body: string }) {
       code.push(line);
       continue;
     }
+    // 일반 줄: 제목, 목록 항목(• 로 표시), 문단, 빈 줄
     const heading = /^(#{1,3}) (.*)/.exec(line);
     result.push(
       heading ? (
@@ -197,6 +214,7 @@ export function Markdown({ body }: { body: string }) {
       )
     );
   }
+  // 닫히지 않은 코드 블록도 남은 내용을 그대로 보여 준다.
   if (code) result.push(<pre key="unfinished-code">{code.join('\n')}</pre>);
   return <div className="markdown-preview">{result}</div>;
 }
