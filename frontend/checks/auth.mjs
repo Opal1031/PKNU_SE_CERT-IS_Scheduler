@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 
-// Run against the local app with cua_repl: await checkAuth(tab).
-export async function checkAuth(tab) {
+// Run against the local app (pnpm dev + 백엔드) with cua_repl:
+//   await checkAuth(tab, { username: 'kitae', password: '…' })
+// 계정 정보를 넘기지 않으면 비로그인 화면·로그인 실패·회원가입 화면까지만 검사한다.
+export async function checkAuth(tab, credentials) {
   const page = tab.playwright;
   const snapshot = () => page.domSnapshot();
   const account = () => page.getByRole('button', { name: / · 사용자 메뉴$/ });
@@ -44,12 +46,24 @@ export async function checkAuth(tab) {
   assert.match(await page.getByRole('alert').innerText(), /아이디 또는 비밀번호가 올바르지 않음|서버에 연결할 수 없어요/);
   assert.equal(await account().count(), 0, 'Credential form never pretends to authenticate');
   assert.equal(await page.getByLabel('비밀번호', { exact: true }).evaluate(el => el.value), '');
-  await page.getByRole('combobox', { name: '데모 사용자', exact: true }).selectOption('gitae');
-  await page.getByRole('button', { name: '데모 로그인', exact: true }).click(); await snapshot();
-  assert.equal(await page.getByRole('button', { name: '기태 · 일반 부원 · 사용자 메뉴', exact: true }).isVisible(), true);
+  assert.equal(await page.getByRole('button', { name: '데모 로그인' }).count(), 0, 'Demo login was removed');
+  await page.getByRole('link', { name: '회원가입', exact: true }).click(); await snapshot();
+  assert.equal(await page.getByRole('heading', { name: '회원가입', exact: true }).isVisible(), true);
+  await page.getByLabel('비밀번호 (8자 이상)', { exact: true }).fill('password-one');
+  await page.getByLabel('비밀번호 확인', { exact: true }).fill('password-two');
+  await page.getByLabel('아이디 (영문·숫자·_.- 3~50자)', { exact: true }).fill('signup-check');
+  await page.getByLabel('이름', { exact: true }).fill('가입 검사');
+  await page.getByRole('button', { name: '가입 신청', exact: true }).click(); await snapshot();
+  assert.match(await page.getByRole('alert').innerText(), /비밀번호와 확인 값이 달라요/, 'Mismatched passwords never reach the server');
+  await page.getByRole('link', { name: '로그인', exact: true }).last().click(); await snapshot();
+  if (!credentials) return;
+  await page.getByLabel('아이디', { exact: true }).fill(credentials.username);
+  await page.getByLabel('비밀번호', { exact: true }).fill(credentials.password);
+  await page.getByRole('button', { name: '로그인', exact: true }).click(); await snapshot();
+  assert.equal(await account().isVisible(), true, 'A real account can sign in');
   assert.equal(await page.getByRole('heading', { name: '활동', exact: true }).isVisible(), true);
   await tab.reload(); await snapshot();
-  assert.equal(await account().isVisible(), true, 'Reload retains the demo session');
+  assert.equal(await account().isVisible(), true, 'Reload retains the server session');
   await account().click(); await snapshot();
   assert.equal(await page.locator('.account-panel').getByRole('button', { name: '로그아웃', exact: true }).isVisible(), true);
   await account().press('Escape'); await snapshot();

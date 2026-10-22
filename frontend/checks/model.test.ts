@@ -253,6 +253,8 @@ test('D-day sorts unfinished deadlines and respects membership and private event
 test('server accounts map to local sample users until activity APIs are connected', () => {
   assert.equal(localUserId({ username: 'demo', name: '데모 사용자' }), 'me');
   assert.equal(localUserId({ username: 'minseo', name: '민서' }), 'minseo');
+  assert.equal(localUserId({ username: 'kitae', name: '기태' }), 'gitae');
+  assert.equal(localUserId({ username: 'hyerim', name: '혜림' }), 'hyelim');
   assert.equal(uid('admin'), undefined);
   assert.equal(localUserId({ username: 'admin', name: '운영진' }), 'admin');
   assert.equal(uid('admin'), 'admin');

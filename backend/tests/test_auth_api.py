@@ -77,3 +77,30 @@ def test_cors_rejects_unknown_origin(client):
     )
     assert res.status_code == 400
     assert "access-control-allow-origin" not in res.headers
+
+
+def test_signup_waits_for_officer_approval(client, people):
+    body = {"username": "newbie", "name": "신입", "password": "newpass123", "role": "officer"}
+    res = client.post("/api/auth/signup", json=body)
+    assert res.status_code == 201
+    created = res.json()
+    assert created["role"] == "member" and created["isActive"] is False  # 역할은 요청과 관계없이 일반부원
+    credentials = {"username": "newbie", "password": "newpass123"}
+    pending = client.post("/api/auth/login", json=credentials)
+    assert pending.status_code == 403 and "승인" in pending.json()["detail"]
+    admin = login(client, "officer")
+    approve = client.patch(f"/api/admin/users/{created['id']}", json={"isActive": True}, headers=admin)
+    assert approve.status_code == 200
+    assert client.post("/api/auth/login", json=credentials).status_code == 200
+
+
+def test_signup_rejects_taken_or_invalid_input(client, people):
+    taken = client.post("/api/auth/signup", json={"username": "alice", "name": "중복", "password": "password123"})
+    assert taken.status_code == 409
+    bad = [
+        {"username": "a", "name": "짧은 아이디", "password": "password123"},
+        {"username": "valid_id", "name": "짧은 비밀번호", "password": "short"},
+        {"username": "valid_id", "name": "", "password": "password123"},
+    ]
+    for body in bad:
+        assert client.post("/api/auth/signup", json=body).status_code == 422

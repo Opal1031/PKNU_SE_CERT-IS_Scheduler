@@ -37,9 +37,9 @@ uvicorn app.main:app --reload    # http://127.0.0.1:8000/docs
 |---|---|---|---|
 | admin | 운영진 | 임원진 | 계정 관리·전체 활동 조회 가능 |
 | minseo | 민서 | 일반부원 | CERT-IS 통합 관리·웹 취약점 연구 팀장 |
-| hyelim | 혜림 | 일반부원 | 네트워크 보안 팀장 |
+| hyerim | 혜림 | 일반부원 | 네트워크 보안 팀장 |
 | yeonwoo | 연우 | 일반부원 | 침해 대응 연구·암호학 기초 팀장 |
-| gitae | 기태 | 일반부원 | |
+| kitae | 기태 | 일반부원 | |
 
 Swagger에서 확인하는 순서: `POST /api/auth/login` 실행 → 응답의 `accessToken` 복사 → 오른쪽 위 **Authorize**에 붙여 넣기 → 다른 API 호출.
 

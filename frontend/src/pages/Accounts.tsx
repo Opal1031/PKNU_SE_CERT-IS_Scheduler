@@ -1,13 +1,11 @@
 import { Fragment, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { changePassword, createAccount, listAccounts, resetPassword, updateAccount } from '../api';
+import { changePassword, createAccount, listAccounts, resetPassword, updateAccount, USERNAME_PATTERN } from '../api';
 import type { ApiUser, Role } from '../api';
 import { Field, Select } from '../ui';
 
 const ROLE_LABEL: Record<Role, string> = { officer: '임원진', member: '일반 부원' };
 const ROLES: [Role, string][] = [['member', ROLE_LABEL.member], ['officer', ROLE_LABEL.officer]];
-// 서버 규칙과 같게 맞춘다: 아이디 영문·숫자·_.- 3~50자, 비밀번호 8~128자, 이름 1~50자.
-const USERNAME_PATTERN = '[A-Za-z0-9_.\\-]{3,50}';
 
 type Notify = (message: string) => void;
 
@@ -55,17 +53,26 @@ export function MyAccount({ account, notify }: { account: ApiUser; notify: Notif
 
 export function AccountAdmin({ me, notify, onSelfChange }: { me: ApiUser; notify: Notify; onSelfChange: () => void }) {
   const [accounts, setAccounts] = useState<ApiUser[] | null>(null), [loadError, setLoadError] = useState('');
-  const [creating, setCreating] = useState(false), [editing, setEditing] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false), [editing, setEditing] = useState<number | null>(null), [approving, setApproving] = useState<number | null>(null);
   useEffect(() => { listAccounts().then(setAccounts).catch((error: Error) => setLoadError(error.message)); }, []);
   function saved(account: ApiUser) {
     setAccounts(list => list?.map(item => item.id === account.id ? account : item) ?? null);
     if (account.id === me.id) onSelfChange();
   }
+  async function approve(account: ApiUser) {
+    setApproving(account.id);
+    try { saved(await updateAccount(account.id, { isActive: true })); notify(`${account.name}(${account.username}) 계정의 로그인을 허용했어요.`); }
+    catch (error) { notify((error as Error).message); }
+    finally { setApproving(null); }
+  }
+  // 회원가입 신청(로그인 대기) 계정을 먼저 보여 준다. 탈퇴·정지로 막은 계정도 같은 상태라 함께 표시된다.
+  const ordered = accounts && [...accounts].sort((a, b) => Number(a.isActive) - Number(b.isActive) || a.id - b.id);
+  const waiting = accounts?.filter(account => !account.isActive).length ?? 0;
   return <section className="settings-block" aria-labelledby="account-admin-title">
     <div className="settings-row">
       <div>
         <h2 id="account-admin-title">계정 관리</h2>
-        <p>임원진만 볼 수 있어요. 회원가입 대신 여기서 부원 계정을 발급하고 역할·비밀번호를 관리해요.</p>
+        <p>임원진만 볼 수 있어요. 회원가입 신청을 승인하고, 계정을 직접 발급하거나 아이디·역할·비밀번호를 관리해요.</p>
       </div>
       <button className="button small" aria-expanded={creating} onClick={() => setCreating(open => !open)}>{creating ? '발급 닫기' : '계정 발급'}</button>
     </div>
@@ -74,17 +81,21 @@ export function AccountAdmin({ me, notify, onSelfChange }: { me: ApiUser; notify
       notify(`${account.name}(${account.username}) 계정을 발급했어요. 초기 비밀번호를 본인에게 전달해주세요.`);
     }} />}
     {loadError && <p className="form-error" role="alert">{loadError}</p>}
+    {waiting > 0 && <p className="note-line" role="status">로그인 대기 계정이 {waiting}개 있어요. 회원가입 신청이면 확인 후 승인해주세요.</p>}
     {!accounts && !loadError && <p className="note-line">계정 목록을 불러오고 있어요.</p>}
-    {accounts && <div className="table-wrap">
+    {ordered && <div className="table-wrap">
       <table className="data-table account-table">
         <thead><tr><th>이름</th><th>아이디</th><th>역할</th><th>상태</th><th><span className="sr-only">관리</span></th></tr></thead>
-        <tbody>{accounts.map(account => <Fragment key={account.id}>
+        <tbody>{ordered.map(account => <Fragment key={account.id}>
           <tr>
             <td>{account.name}{account.id === me.id && <span className="tag mine">나</span>}</td>
             <td>{account.username}</td>
             <td>{ROLE_LABEL[account.role]}</td>
-            <td><span className={`tag ${account.isActive ? '' : 'external'}`}>{account.isActive ? '사용 중' : '비활성'}</span></td>
-            <td><button className="button small" aria-expanded={editing === account.id} onClick={() => setEditing(editing === account.id ? null : account.id)}>{editing === account.id ? '닫기' : '관리'}</button></td>
+            <td><span className={`tag ${account.isActive ? '' : 'external'}`}>{account.isActive ? '사용 중' : '승인 대기·비활성'}</span></td>
+            <td><div className="button-row">
+              {!account.isActive && <button className="button small primary" disabled={approving === account.id} onClick={() => approve(account)}>{approving === account.id ? '승인 중' : '승인'}</button>}
+              <button className="button small" aria-expanded={editing === account.id} onClick={() => setEditing(editing === account.id ? null : account.id)}>{editing === account.id ? '닫기' : '관리'}</button>
+            </div></td>
           </tr>
           {editing === account.id && <tr className="account-edit-row"><td colSpan={5}>
             <EditAccount account={account} self={account.id === me.id} notify={notify} onSaved={saved} />
@@ -115,7 +126,10 @@ function CreateAccount({ onCreated }: { onCreated: (account: ApiUser) => void })
 function EditAccount({ account, self, notify, onSaved }: { account: ApiUser; self: boolean; notify: Notify; onSaved: (account: ApiUser) => void }) {
   const info = useSubmit(async data => {
     const role: Role = text(data, 'role') === 'officer' ? 'officer' : 'member';
-    const changes: Partial<Pick<ApiUser, 'name' | 'role' | 'isActive'>> = {}, name = text(data, 'name').trim();
+    const changes: Partial<Pick<ApiUser, 'username' | 'name' | 'role' | 'isActive'>> = {};
+    const username = text(data, 'username').trim(), name = text(data, 'name').trim();
+    // 로그인 상태는 계정 번호로 유지되므로 아이디를 바꿔도 이미 로그인한 사용자는 로그아웃되지 않는다.
+    if (username !== account.username) changes.username = username;
     if (name !== account.name) changes.name = name;
     // 자기 자신의 역할·활성 여부는 서버가 거절하므로(다른 임원진이 변경) 보내지 않는다.
     if (!self && role !== account.role) changes.role = role;
@@ -130,6 +144,7 @@ function EditAccount({ account, self, notify, onSaved }: { account: ApiUser; sel
   return <div className="account-edit">
     <form aria-label={`${account.name} 계정 정보 변경`} onSubmit={info.submit}>
       <div className="form-grid">
+        <Field label="아이디 (로그인할 때 사용)" name="username" defaultValue={account.username} autoComplete="off" required pattern={USERNAME_PATTERN} title="영문·숫자·_.- 3~50자" maxLength={50} />
         <Field label="이름" name="name" defaultValue={account.name} required maxLength={50} />
         <Select label="역할" name="role" items={ROLES} defaultValue={account.role} disabled={self} />
       </div>

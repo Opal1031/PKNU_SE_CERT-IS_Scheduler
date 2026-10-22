@@ -39,9 +39,18 @@ class UserCreate(CamelModel):
     role: Role = "member"
 
 
-class UserUpdate(CamelModel):
-    """임원진이 다른 계정의 이름·역할·활성 여부를 바꿀 때 사용. 보낸 필드만 변경."""
+class SignupRequest(CamelModel):
+    """회원가입. 역할은 항상 일반부원이고, 임원진이 승인(로그인 허용)해야 로그인할 수 있다."""
 
+    username: Username
+    name: DisplayName
+    password: Password
+
+
+class UserUpdate(CamelModel):
+    """임원진이 계정의 아이디·이름·역할·활성 여부를 바꿀 때 사용. 보낸 필드만 변경."""
+
+    username: Username | None = None
     name: DisplayName | None = None
     role: Role | None = None
     is_active: bool | None = None

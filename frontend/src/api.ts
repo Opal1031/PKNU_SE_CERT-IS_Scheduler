@@ -1,11 +1,10 @@
 // 백엔드 API 호출. 개발 서버는 로컬 백엔드(127.0.0.1:8000), 배포 빌드는 같은 주소의 /api 를 부른다.
 // 다른 주소를 쓰려면 frontend/.env.local 의 VITE_API_URL 로 바꾼다(.env.example 참고).
 export const API_URL = (import.meta.env?.VITE_API_URL ?? (import.meta.env?.DEV ? 'http://127.0.0.1:8000' : '')).replace(/\/+$/, '');
-// 데모 로그인·사용자 미리보기 같은 검토 도구는 개발 서버(pnpm dev)와,
-// 백엔드 없이 올리는 데모 배포(VITE_DEMO_TOOLS=true, Vercel)에서만 보여 준다.
-export const DEMO_TOOLS = (import.meta.env?.DEV ?? false) || import.meta.env?.VITE_DEMO_TOOLS === 'true';
 
 export type Role = 'officer' | 'member';
+// 아이디 입력 규칙. 서버와 같게 맞춘다(영문·숫자·_.- 3~50자). 비밀번호는 8~128자, 이름은 1~50자.
+export const USERNAME_PATTERN = '[A-Za-z0-9_.\\-]{3,50}';
 export interface ApiUser {
   id: number; username: string; name: string;
   role: Role; officer: boolean; isActive: boolean; createdAt: string;
@@ -58,6 +57,10 @@ export async function login(username: string, password: string): Promise<ApiUser
 
 export const fetchMe = () => request<ApiUser>('/api/auth/me');
 
+// 회원가입은 승인 대기 계정을 만든다. 임원진이 계정 관리에서 로그인을 허용해야 로그인할 수 있다.
+export const signup = (account: { username: string; name: string; password: string }) =>
+  request<ApiUser>('/api/auth/signup', { method: 'POST', body: JSON.stringify(account) });
+
 // JWT는 서버에 로그인 상태가 없으므로 토큰을 지우면 로그아웃이다.
 export function logout() { setToken(null); }
 
@@ -80,11 +83,11 @@ export function tokenExpiresAt(token: string | null): number | null {
 export const changePassword = (currentPassword: string, newPassword: string) =>
   request<void>('/api/users/me/password', { method: 'PATCH', body: JSON.stringify({ currentPassword, newPassword }) });
 
-// 임원진 전용 계정 관리. 회원가입 대신 임원진이 계정을 발급한다.
+// 임원진 전용 계정 관리: 가입 승인, 계정 발급, 아이디·이름·역할·로그인 허용 변경, 비밀번호 초기화.
 export const listAccounts = () => request<ApiUser[]>('/api/admin/users');
 export const createAccount = (account: { username: string; name: string; password: string; role: Role }) =>
   request<ApiUser>('/api/admin/users', { method: 'POST', body: JSON.stringify(account) });
-export const updateAccount = (id: number, changes: Partial<Pick<ApiUser, 'name' | 'role' | 'isActive'>>) =>
+export const updateAccount = (id: number, changes: Partial<Pick<ApiUser, 'username' | 'name' | 'role' | 'isActive'>>) =>
   request<ApiUser>(`/api/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(changes) });
 export const resetPassword = (id: number, newPassword: string) =>
   request<void>(`/api/admin/users/${id}/password`, { method: 'PUT', body: JSON.stringify({ newPassword }) });

@@ -1,11 +1,10 @@
-import { DEMO_TOOLS } from '../api';
 import type { ApiUser } from '../api';
 import { id, iso, mutate, name, requireMember, room, same, stamp, workspace } from '../model';
 import { Heading } from '../ui';
 import type { ViewProps } from '../ui';
 import { AccountAdmin, MyAccount } from './Accounts';
 
-// account: 서버 계정으로 로그인한 경우의 계정 정보(데모 로그인이면 null)
+// account: 로그인한 서버 계정 정보
 export function Settings({ model, session, prefs, setPrefs, open, notify, account, refreshAccount }: ViewProps & { account: ApiUser | null; refreshAccount: () => void }) {
   function simulate() {
     try {
@@ -28,15 +27,6 @@ export function Settings({ model, session, prefs, setPrefs, open, notify, accoun
     <Heading title="설정" />
     {account && <MyAccount account={account} notify={notify} />}
     {account?.officer && <AccountAdmin me={account} notify={notify} onSelfChange={refreshAccount} />}
-    {DEMO_TOOLS && <section className="settings-block">
-      <div className="settings-row">
-        <div>
-          <h2>사용자 미리보기</h2>
-          <p>{name(session.userId)} · {session.officer ? '임원진' : '일반 부원'} · 팀장은 활동별 관계로 결정됨</p>
-        </div>
-        <button className="button small" onClick={() => open({ kind: 'profile' })}>변경</button>
-      </div>
-    </section>}
     <section className="settings-block">
       <div className="settings-row">
         <div>
