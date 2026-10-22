@@ -1,60 +1,104 @@
 // 백엔드 API 호출. 개발 서버는 로컬 백엔드(127.0.0.1:8000), 배포 빌드는 같은 주소의 /api 를 부른다.
 // 다른 주소를 쓰려면 frontend/.env.local 의 VITE_API_URL 로 바꾼다(.env.example 참고).
-export const API_URL = (import.meta.env?.VITE_API_URL ?? (import.meta.env?.DEV ? 'http://127.0.0.1:8000' : '')).replace(/\/+$/, '');
+export const API_URL = (import.meta.env?.VITE_API_URL ?? (import.meta.env?.DEV ? 'http://127.0.0.1:8000' : '')).replace(
+  /\/+$/,
+  ''
+);
 
+/** 서버 계정 역할: 임원진(officer) 또는 일반 부원(member). */
 export type Role = 'officer' | 'member';
 // 아이디 입력 규칙. 서버와 같게 맞춘다(영문·숫자·_.- 3~50자). 비밀번호는 8~128자, 이름은 1~50자.
 export const USERNAME_PATTERN = '[A-Za-z0-9_.\\-]{3,50}';
+/** 서버가 돌려주는 계정 정보. */
 export interface ApiUser {
-  id: number; username: string; name: string;
-  role: Role; officer: boolean; isActive: boolean; createdAt: string;
+  id: number;
+  username: string;
+  name: string;
+  role: Role;
+  officer: boolean;
+  isActive: boolean;
+  createdAt: string;
 }
 // 토큰이 만료·위조됐거나 계정이 비활성화되면 서버가 401을 준다. 화면은 이 이벤트를 받아 로그아웃 상태로 바꾼다.
 export const SESSION_EXPIRED = 'cert-is:session-expired';
 
+/** HTTP 상태 코드를 함께 담는 API 오류. 서버에 연결하지 못하면 status 는 0. */
 export class ApiError extends Error {
   readonly status: number;
-  constructor(message: string, status: number) { super(message); this.status = status; }
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
 }
 
+// 접근 토큰(JWT)은 sessionStorage 에 두어 탭을 닫으면 사라진다.
 const TOKEN_KEY = 'cert-is-access-token';
 // sessionStorage를 쓸 수 없는 환경에서도 현재 탭에서는 로그인이 유지되도록 메모리에 함께 둔다.
 let memoryToken: string | null = null;
 
+/** 저장된 접근 토큰. 없으면 null. */
 export function getToken(): string | null {
-  try { return sessionStorage.getItem(TOKEN_KEY) ?? memoryToken; } catch { return memoryToken; }
+  try {
+    return sessionStorage.getItem(TOKEN_KEY) ?? memoryToken;
+  } catch {
+    return memoryToken;
+  }
 }
 
+// 토큰을 메모리와 sessionStorage 에 함께 저장한다. null 이면 지운다.
 function setToken(token: string | null) {
   memoryToken = token;
-  try { if (token) sessionStorage.setItem(TOKEN_KEY, token); else sessionStorage.removeItem(TOKEN_KEY); } catch { /* 메모리 값만 사용 */ }
+  try {
+    if (token) sessionStorage.setItem(TOKEN_KEY, token);
+    else sessionStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* 메모리 값만 사용 */
+  }
 }
 
+// 공통 요청 함수. 토큰을 붙여 JSON 으로 주고받고, 실패 응답은 ApiError 로 바꿔 던진다.
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  // 요청 헤더: 본문이 있으면 JSON 형식, 로그인 상태면 Bearer 토큰
   const headers = new Headers(init.headers);
   if (init.body) headers.set('Content-Type', 'application/json');
   const token = getToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
   let response: Response;
-  try { response = await fetch(`${API_URL}${path}`, { ...init, headers }); }
-  catch { throw new ApiError('서버에 연결할 수 없어요. 백엔드가 실행 중인지 확인해주세요.', 0); }
+  try {
+    response = await fetch(`${API_URL}${path}`, { ...init, headers });
+  } catch {
+    throw new ApiError('서버에 연결할 수 없어요. 백엔드가 실행 중인지 확인해주세요.', 0);
+  }
+  // 로그인 요청이 아닌데 보낸 토큰이 거절되면 세션 만료 처리. 204는 본문 없음.
   if (response.status === 401 && token && path !== '/api/auth/login') expireSession();
   if (response.status === 204) return undefined as T;
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     // 서버 오류 형식은 {"detail": "이유"}이고, 입력 형식 오류(422)는 detail이 목록이다.
     const detail = (body as { detail?: unknown } | null)?.detail;
-    throw new ApiError(typeof detail === 'string' ? detail : Array.isArray(detail) ? '입력 값을 확인해주세요.' : '요청을 처리하지 못했어요.', response.status);
+    throw new ApiError(
+      typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? '입력 값을 확인해주세요.'
+          : '요청을 처리하지 못했어요.',
+      response.status
+    );
   }
   return body as T;
 }
 
+/** 로그인하고 받은 접근 토큰을 저장한 뒤 계정 정보를 돌려준다. */
 export async function login(username: string, password: string): Promise<ApiUser> {
-  const result = await request<{ accessToken: string; user: ApiUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+  const result = await request<{ accessToken: string; user: ApiUser }>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password })
+  });
   setToken(result.accessToken);
   return result.user;
 }
 
+/** 현재 토큰의 계정 정보 조회. */
 export const fetchMe = () => request<ApiUser>('/api/auth/me');
 
 // 회원가입은 승인 대기 계정을 만든다. 임원진이 계정 관리에서 로그인을 허용해야 로그인할 수 있다.
@@ -62,8 +106,11 @@ export const signup = (account: { username: string; name: string; password: stri
   request<ApiUser>('/api/auth/signup', { method: 'POST', body: JSON.stringify(account) });
 
 // JWT는 서버에 로그인 상태가 없으므로 토큰을 지우면 로그아웃이다.
-export function logout() { setToken(null); }
+export function logout() {
+  setToken(null);
+}
 
+/** 토큰을 지우고 SESSION_EXPIRED 이벤트를 보내 화면을 로그아웃 상태로 돌린다. */
 export function expireSession() {
   setToken(null);
   globalThis.dispatchEvent?.(new Event(SESSION_EXPIRED));
@@ -74,12 +121,18 @@ export function tokenExpiresAt(token: string | null): number | null {
   const payload = token?.split('.')[1];
   if (!payload) return null;
   try {
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=');
+    const base64 = payload
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(Math.ceil(payload.length / 4) * 4, '=');
     const exp: unknown = JSON.parse(atob(base64)).exp;
     return typeof exp === 'number' ? exp * 1000 : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
+/** 내 비밀번호 변경(현재 비밀번호 확인 필요). */
 export const changePassword = (currentPassword: string, newPassword: string) =>
   request<void>('/api/users/me/password', { method: 'PATCH', body: JSON.stringify({ currentPassword, newPassword }) });
 

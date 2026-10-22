@@ -15,19 +15,25 @@ API 계층(app/api/deps.py)은 여기 결과에 따라 401/403을 응답하고,
 from collections.abc import Iterable
 from typing import Protocol
 
+# 동아리 역할(users.role 값)
 OFFICER = "officer"
 MEMBER = "member"
 ROLES = (OFFICER, MEMBER)
+# 활동 상태: '보관'은 조회 전용, '완료'·'보관'은 참가 신청을 받지 않는다.
 ARCHIVED = "보관"
 CLOSED_STATUSES = ("완료", ARCHIVED)
 
 
 class UserLike(Protocol):
+    """권한 판단에 필요한 사용자 속성. User 모델이든 테스트용 객체든 이 속성만 있으면 된다."""
+
     id: int
     role: str
 
 
 class WorkspaceLike(Protocol):
+    """권한 판단에 필요한 활동 속성(팀장, 상태, 구성원 ID 목록)."""
+
     leader_id: int
     status: str
 
@@ -44,6 +50,7 @@ def is_member(ws: WorkspaceLike, user: UserLike) -> bool:
 
 
 def is_leader(ws: WorkspaceLike, user: UserLike) -> bool:
+    """팀장 여부. leader_id가 같아도 구성원 명단에서 빠졌으면 팀장으로 보지 않는다."""
     return is_member(ws, user) and ws.leader_id == user.id
 
 
@@ -90,6 +97,7 @@ def can_edit_event(visibility: str, ws: WorkspaceLike | None, user: UserLike) ->
 
 
 def can_view_event(visibility: str, assignee_ids: Iterable[int], ws: WorkspaceLike | None, user: UserLike) -> bool:
+    """일정 조회: 동아리 전체 일정은 누구나, 개인 일정은 담당자 본인만, 활동 일정은 그 활동 조회 권한자만."""
     if visibility == "club":
         return True
     if visibility == "private":
@@ -103,4 +111,5 @@ def can_read_chat(archived: bool, room_member_ids: Iterable[int], ws: WorkspaceL
 
 
 def can_send_chat(archived: bool, room_member_ids: Iterable[int], ws: WorkspaceLike, user: UserLike) -> bool:
+    """채팅 전송: 열람 권한이 있고 활동이 보관되지 않았을 때만."""
     return can_read_chat(archived, room_member_ids, ws, user) and can_write_workspace(ws, user)

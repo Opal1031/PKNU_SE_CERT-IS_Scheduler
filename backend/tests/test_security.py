@@ -1,3 +1,5 @@
+"""비밀번호 해시와 access token 발급·검증(만료·변조·위조 토큰 거부) 테스트."""
+
 from datetime import UTC, datetime, timedelta
 
 import jwt

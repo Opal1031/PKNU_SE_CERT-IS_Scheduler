@@ -1,3 +1,5 @@
+"""사용자(동아리 계정) 모델."""
+
 from sqlalchemy import Boolean, Enum, String
 from sqlalchemy.orm import Mapped, mapped_column
 

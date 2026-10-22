@@ -12,6 +12,8 @@ from pydantic.alias_generators import to_camel
 
 
 class CamelModel(BaseModel):
+    """모든 스키마의 기반. JSON은 camelCase로 주고받고, ORM 객체에서 바로 변환할 수 있다."""
+
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
 
 
@@ -22,8 +24,11 @@ def _utc_iso(value: dt.datetime) -> str:
     return value.astimezone(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
+# 응답에서 UTC ISO 문자열(...Z)로 내보내는 시각 타입
 UTCDateTime = Annotated[dt.datetime, PlainSerializer(_utc_iso, return_type=str)]
 
 
 class ErrorOut(BaseModel):
+    """오류 응답 형식. detail에 거부 사유 메시지가 담긴다(API 문서의 오류 응답 표시용)."""
+
     detail: str

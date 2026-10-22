@@ -16,6 +16,7 @@ import jwt
 
 from app.core.config import settings
 
+# scrypt 비용 인자(N, r, p)와 결과 길이(바이트). 해시 문자열에 함께 저장되어 검증할 때 그 값을 쓴다.
 _SCRYPT_N, _SCRYPT_R, _SCRYPT_P, _SCRYPT_LEN = 2**14, 8, 1, 64
 
 
@@ -24,6 +25,7 @@ def _b64(data: bytes) -> str:
 
 
 def hash_password(password: str) -> str:
+    """무작위 솔트로 scrypt 해시를 만들어 `scrypt$N$r$p$솔트$해시` 형식 문자열로 돌려준다."""
     salt = secrets.token_bytes(16)
     digest = hashlib.scrypt(
         password.encode("utf-8"), salt=salt, n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P, dklen=_SCRYPT_LEN
@@ -32,6 +34,7 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, stored: str) -> bool:
+    """저장된 해시의 인자·솔트로 입력 비밀번호를 다시 해시해 비교한다. 형식이 잘못된 해시는 False."""
     try:
         scheme, n, r, p, salt, digest = stored.split("$")
         if scheme != "scrypt":
@@ -52,6 +55,7 @@ DUMMY_HASH = hash_password(secrets.token_urlsafe(16))
 
 
 def create_access_token(user_id: int, now: datetime | None = None) -> str:
+    """사용자 ID와 발급·만료 시각을 담아 서명한 access token을 만든다. now로 발급 시각을 지정할 수 있다."""
     issued = now or datetime.now(UTC)
     payload = {
         "sub": str(user_id),

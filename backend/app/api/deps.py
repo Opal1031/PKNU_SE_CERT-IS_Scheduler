@@ -22,15 +22,18 @@ from app.models import User, Workspace
 # Swagger(/docs)의 Authorize 버튼에 토큰을 붙여 넣어 테스트할 수 있다.
 bearer = HTTPBearer(auto_error=False, description="POST /api/auth/login 응답의 accessToken")
 
+# 라우트 인자 타입으로 쓰는 의존성: 요청 단위 DB 세션, Bearer 토큰(헤더가 없으면 None)
 DB = Annotated[Session, Depends(get_db)]
 Credentials = Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]
 
 
 def unauthorized(detail: str = "로그인이 필요함") -> HTTPException:
+    """401 예외를 만든다. Bearer 인증이 필요하다는 WWW-Authenticate 헤더를 함께 보낸다."""
     return HTTPException(status.HTTP_401_UNAUTHORIZED, detail=detail, headers={"WWW-Authenticate": "Bearer"})
 
 
 def forbidden(detail: str) -> HTTPException:
+    """403 예외를 만든다(로그인은 했지만 해당 동작 권한이 없음)."""
     return HTTPException(status.HTTP_403_FORBIDDEN, detail=detail)
 
 
@@ -45,6 +48,7 @@ def ensure_username_free(db: Session, username: str, user_id: int | None = None)
 
 
 def get_current_user(db: DB, credentials: Credentials) -> User:
+    """Bearer 토큰으로 현재 로그인 사용자를 찾는다. 토큰이 없거나 무효이거나 사용할 수 없는 계정이면 401."""
     if credentials is None:
         raise unauthorized()
     user_id = decode_access_token(credentials.credentials)
@@ -61,6 +65,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 def require_officer(user: CurrentUser) -> User:
+    """임원진 전용 기능의 의존성. 일반부원이면 403."""
     if not perm.is_officer(user):
         raise forbidden("임원진만 사용할 수 있는 기능임")
     return user
@@ -70,6 +75,7 @@ Officer = Annotated[User, Depends(require_officer)]
 
 
 def load_workspace(db: Session, workspace_id: int) -> Workspace:
+    """권한 판단에 필요한 구성원 목록까지 함께 불러온 활동을 돌려준다. 없으면 404."""
     ws = db.scalar(select(Workspace).where(Workspace.id == workspace_id).options(selectinload(Workspace.memberships)))
     if ws is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="활동을 찾을 수 없음")
@@ -77,6 +83,7 @@ def load_workspace(db: Session, workspace_id: int) -> Workspace:
 
 
 def viewable_workspace(workspace_id: int, db: DB, user: CurrentUser) -> Workspace:
+    """조회 권한(구성원 또는 임원진)이 있을 때만 활동을 넘겨준다."""
     ws = load_workspace(db, workspace_id)
     if not perm.can_view_workspace(ws, user):
         raise forbidden("활동 구성원 또는 임원진만 조회할 수 있음")
@@ -84,6 +91,7 @@ def viewable_workspace(workspace_id: int, db: DB, user: CurrentUser) -> Workspac
 
 
 def writable_workspace(workspace_id: int, db: DB, user: CurrentUser) -> Workspace:
+    """변경 권한(구성원, 보관되지 않은 활동)이 있을 때만 활동을 넘겨준다."""
     ws = load_workspace(db, workspace_id)
     if not perm.can_write_workspace(ws, user):
         raise forbidden("활동 구성원만 변경 가능함. 보관 활동은 조회 전용임")
@@ -91,12 +99,14 @@ def writable_workspace(workspace_id: int, db: DB, user: CurrentUser) -> Workspac
 
 
 def leader_workspace(workspace_id: int, db: DB, user: CurrentUser) -> Workspace:
+    """해당 활동의 팀장일 때만 활동을 넘겨준다."""
     ws = load_workspace(db, workspace_id)
     if not perm.can_manage_workspace(ws, user):
         raise forbidden("이 활동의 팀장만 변경 가능함")
     return ws
 
 
+# 라우트에서 workspace_id로 활동을 불러오면서 권한까지 검사하는 의존성 타입
 ViewableWorkspace = Annotated[Workspace, Depends(viewable_workspace)]
 WritableWorkspace = Annotated[Workspace, Depends(writable_workspace)]
 LeaderWorkspace = Annotated[Workspace, Depends(leader_workspace)]

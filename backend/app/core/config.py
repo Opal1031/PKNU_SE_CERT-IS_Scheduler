@@ -15,6 +15,7 @@ TLS_MODES = {"REQUIRED", "VERIFY_CA", "VERIFY_IDENTITY"}
 
 
 def _split(value: str) -> list[str]:
+    """쉼표로 구분한 환경 변수 값을 목록으로 바꾼다. 앞뒤 공백과 빈 항목은 버린다."""
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
@@ -40,12 +41,15 @@ def normalize_database_url(url: str) -> tuple[str, bool]:
 
 
 def _pem(value: str | None) -> str | None:
+    """환경 변수로 받은 PEM 인증서 문자열을 정리한다. 값이 비어 있으면 None."""
     # 환경 변수에 줄바꿈을 \n 문자로 넣은 경우도 인증서로 읽을 수 있게 한다.
     return value.replace("\\n", "\n").strip() if value and value.strip() else None
 
 
 @dataclass(frozen=True)
 class Settings:
+    """서버 설정 값. 객체를 만들 때 환경 변수를 읽고, 없으면 로컬 개발용 기본값을 쓴다(생성 후 변경 불가)."""
+
     app_name: str = "CERT-IS API"
     env: str = field(default_factory=lambda: os.getenv("APP_ENV", "local"))
     # 로컬 개발은 파일 하나로 동작하는 SQLite, Docker/배포는 MySQL을 사용한다.
@@ -70,4 +74,5 @@ class Settings:
             raise RuntimeError("운영 환경에서는 DATABASE_URL 환경 변수로 MySQL 주소를 반드시 지정해야 함")
 
 
+# 앱 전체가 함께 쓰는 설정. 모듈을 처음 불러올 때 환경 변수를 한 번 읽는다.
 settings = Settings()

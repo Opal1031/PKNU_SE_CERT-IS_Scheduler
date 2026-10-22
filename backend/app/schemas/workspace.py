@@ -1,3 +1,5 @@
+"""활동(Workspace) 응답 스키마."""
+
 import datetime as dt
 from typing import Literal
 
@@ -19,6 +21,8 @@ class PublicWorkspaceOut(CamelModel):
 
 
 class WorkspaceOut(PublicWorkspaceOut):
+    """로그인 사용자용 활동 응답. 공개 정보에 기간·팀장·구성원과 요청자의 관계(my_role)를 더한다."""
+
     start_date: dt.date | None
     end_date: dt.date | None
     leader_id: int

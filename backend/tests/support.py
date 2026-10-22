@@ -24,6 +24,7 @@ if TEST_DATABASE_URL:
 else:
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 
+    # 앱(app.db.session)과 마찬가지로 SQLite에서도 외래 키 검사를 켠다.
     @event.listens_for(engine, "connect")
     def _fk_on(dbapi_conn, _record):
         dbapi_conn.execute("PRAGMA foreign_keys=ON")

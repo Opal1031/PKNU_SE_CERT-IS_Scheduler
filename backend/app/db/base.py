@@ -25,12 +25,18 @@ def utcnow() -> dt.datetime:
 
 
 class Base(DeclarativeBase):
+    """선언형 모델의 기반 클래스. 제약조건 이름 규칙(NAMING_CONVENTION)을 메타데이터에 적용한다."""
+
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
 class CreatedAtMixin:
+    """행을 만든 시각(created_at)을 자동으로 기록한다."""
+
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class TimestampMixin(CreatedAtMixin):
+    """생성 시각에 더해, 행을 수정할 때마다 updated_at을 갱신한다."""
+
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)

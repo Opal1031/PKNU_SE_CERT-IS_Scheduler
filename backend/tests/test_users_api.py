@@ -1,3 +1,5 @@
+"""임원진 계정 관리 API와 사용자 목록·내 비밀번호 변경 API 테스트."""
+
 from tests.support import PASSWORD, login
 
 
@@ -61,6 +63,7 @@ def test_officer_resets_forgotten_password(client, people):
 
 
 def test_password_reset_rules(client, people):
+    """비밀번호 초기화는 로그인한 임원진만 가능하고, 짧은 비밀번호와 없는 계정은 거부한다."""
     admin, alice = login(client, "officer"), login(client, "alice")
     url = f"/api/admin/users/{people['bob'].id}/password"
     assert client.put(url, json={"newPassword": "reset-pass1"}, headers=alice).status_code == 403
@@ -81,6 +84,7 @@ def test_officer_changes_username(client, people):
 
 
 def test_username_change_rules(client, people):
+    """아이디 변경 시 중복·형식 오류는 거부하고, 현재 아이디를 그대로 보내는 것은 허용한다."""
     admin = login(client, "officer")
     url = f"/api/admin/users/{people['bob'].id}"
     assert client.patch(url, json={"username": "alice"}, headers=admin).status_code == 409

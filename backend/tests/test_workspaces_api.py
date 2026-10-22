@@ -1,3 +1,5 @@
+"""활동 조회 API와 활동 권한 의존성(WritableWorkspace·LeaderWorkspace) 테스트."""
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -9,6 +11,7 @@ from tests.support import login, make_workspace, override_get_db
 
 @pytest.fixture()
 def spaces(db, people):
+    """진행 중 활동 2개(웹 연구: alice 팀장·bob 팀원, 암호 스터디: carol)와 보관된 활동 1개."""
     alice, bob, carol = people["alice"], people["bob"], people["carol"]
     return {
         "web": make_workspace(db, "웹 연구", leader=alice, members=[alice, bob]),

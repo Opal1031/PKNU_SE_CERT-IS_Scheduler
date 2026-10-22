@@ -26,6 +26,7 @@ def db() -> Iterator[Session]:
 
 @pytest.fixture()
 def client(db: Session) -> Iterator[TestClient]:
+    """앱의 DB 의존성(get_db)을 테스트 DB 세션으로 바꾼 클라이언트."""
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c

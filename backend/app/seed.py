@@ -55,14 +55,19 @@ DEMO_WORKSPACES = [
 
 def seed(db: Session, password: str = DEFAULT_PASSWORD) -> bool:
     """샘플을 넣었으면 True, 이미 데이터가 있어 건너뛰었으면 False."""
+    # 사용자가 한 명이라도 있으면 이미 초기화된 DB로 보고 건너뛴다.
     if db.scalar(select(User.id).limit(1)) is not None:
         return False
+
+    # 샘플 계정을 같은 비밀번호로 만들고, 활동에 연결할 수 있게 flush로 ID를 먼저 받는다.
     users = {
         username: User(username=username, name=name, role=role, password_hash=hash_password(password))
         for username, name, role in DEMO_USERS
     }
     db.add_all(users.values())
     db.flush()
+
+    # 샘플 활동을 '진행 중' 상태로 만들고 팀장(생성자)과 구성원을 연결한다.
     for kind, name, initial, field, goal, leader, members in DEMO_WORKSPACES:
         ws = Workspace(
             type=kind,
@@ -81,6 +86,7 @@ def seed(db: Session, password: str = DEFAULT_PASSWORD) -> bool:
 
 
 def main() -> None:
+    """없는 테이블을 만들고 샘플 데이터를 넣는다. 샘플 계정 비밀번호는 SEED_PASSWORD로 바꿀 수 있다."""
     settings.check()  # 배포 빌드에서 DB 주소·비밀키가 빠졌으면 여기서 멈춘다.
     Base.metadata.create_all(engine)
     password = os.getenv("SEED_PASSWORD", DEFAULT_PASSWORD)
