@@ -1,3 +1,5 @@
+// AI 설문 화면. 15개 문항을 대화 형식으로 하나씩 묻고, 응답 점수로 보안 분야 순위와
+// 추천 활동·직무를 보여 준다. 응답은 사용자별로 화면 설정(prefs)에 저장한다.
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { canView, name, url } from './model';
 import { answerLabels, rankSurvey, surveyQuestions } from './recommend';
@@ -5,7 +7,10 @@ import type { SurveyAnswer } from './recommend';
 import { Heading, Icon } from './ui';
 import type { ViewProps } from './ui';
 
+/** AI 설문 페이지. 진행 중에는 질문 대화와 답변 입력을, 모두 답하면 추천 결과를 보여 준다. */
 export default function Survey({ model: m, session: s, prefs: p, setPrefs, open }: ViewProps) {
+  // 진행 상태: 저장된 응답 수만큼 진행한 것으로 보고 이어 시작한다.
+  // selected는 현재 문항에서 새로 고른 답이며, 없으면 저장된 답을 선택값으로 쓴다.
   const answers = p.aiSurveys[s.userId] || [];
   const [step, setStep] = useState(answers.length),
     [selected, setSelected] = useState<SurveyAnswer | undefined>(undefined);
@@ -14,8 +19,11 @@ export default function Survey({ model: m, session: s, prefs: p, setPrefs, open 
     messages = useRef<HTMLDivElement>(null);
   const done = step === surveyQuestions.length,
     choice = selected === undefined ? answers[step] : selected;
+
+  // 완료 시 분야 순위를 계산하고, 점수가 있는 1위 분야(공동 포함)를 추천 분야로 삼는다.
   const ranking = done ? rankSurvey(answers) : [],
     recommended = ranking.filter(field => field.rank === 1 && field.score > 0);
+  // 추천 활동: 완료·보관이 아닌 활동 중 점수가 있는 분야의 활동을 분야 순위대로 정렬
   // ponytail: 활동·설문 분류가 달라 이름이 같은 분야만 연결하며, 분류 정책 확정 시 통합한다.
   const activities = m.workspaces
     .filter(
@@ -25,10 +33,14 @@ export default function Survey({ model: m, session: s, prefs: p, setPrefs, open 
       (a, b) =>
         ranking.find(field => field.name === a.field)!.rank - ranking.find(field => field.name === b.field)!.rank
     );
+
+  // 문항이 바뀌면 현재 질문(완료 시 결과 영역)에 포커스를 주고 대화창을 맨 아래로 내린다.
   useEffect(() => {
     (done ? result.current : current.current)?.focus({ preventScroll: true });
     if (messages.current) messages.current.scrollTop = messages.current.scrollHeight;
   }, [step]);
+
+  // 문항 이동, 답변 제출(현재 문항 응답 저장 후 다음 문항), 응답을 비우고 처음부터 다시 시작
   function move(index: number) {
     setStep(index);
     setSelected(undefined);
@@ -47,6 +59,7 @@ export default function Survey({ model: m, session: s, prefs: p, setPrefs, open 
   }
   return (
     <div className="survey-page">
+      {/* 제목 영역. 완료 후에는 답변 수정·다시 시작 버튼 표시 */}
       <Heading title={done ? 'AI 설문 결과' : 'AI 설문'}>
         {done ? (
           <>
@@ -61,9 +74,11 @@ export default function Survey({ model: m, session: s, prefs: p, setPrefs, open 
           <span className="tag">나의 탐구 스타일 찾기</span>
         )}
       </Heading>
+      {/* 설문 진행 화면: 질문 대화 영역과 답변 입력 폼 */}
       {!done && (
         <div className="survey-layout">
           <section className="survey-chat" aria-label="AI 설문 대화">
+            {/* 길잡이 정보, 문항 번호, 진행률 */}
             <header className="survey-header">
               <span className="survey-avatar">
                 <Icon name="ai" />
@@ -82,6 +97,7 @@ export default function Survey({ model: m, session: s, prefs: p, setPrefs, open 
               value={done ? surveyQuestions.length : step}
               max={surveyQuestions.length}
             />
+            {/* 대화 내역: 인사말, 지금까지의 질문과 내 답변(답변별 수정 버튼) */}
             <div className="survey-messages" ref={messages} role="region" aria-label="질문 대화 내역" tabIndex={0}>
               <article className="message">
                 <div className="message-name">CERT-IS 길잡이</div>
@@ -139,6 +155,7 @@ export default function Survey({ model: m, session: s, prefs: p, setPrefs, open 
               ))}
             </div>
           </section>
+          {/* 답변 입력: 5단계 척도와 '잘 모르겠다', 이전·다음 질문 버튼 */}
           <form className="survey-composer" aria-label="설문 답변" onSubmit={submit}>
             <fieldset className="survey-scale">
               <legend>평소의 나와 얼마나 비슷한가요?</legend>
@@ -195,6 +212,7 @@ export default function Survey({ model: m, session: s, prefs: p, setPrefs, open 
           </form>
         </div>
       )}
+      {/* 설문 결과: 분야 순위, 추천 활동, 추천 직무 */}
       {done && (
         <section className="survey-results" ref={result} tabIndex={-1} aria-labelledby="survey-results-title">
           <h2 id="survey-results-title">
@@ -206,6 +224,7 @@ export default function Survey({ model: m, session: s, prefs: p, setPrefs, open 
           </p>
           {ranking.length ? (
             <div className="home-dashboard survey-result-layout">
+              {/* 분야별 점수와 순위. 같은 점수는 공동 순위로 표시 */}
               <section
                 className="home-panel survey-result-card survey-field-panel"
                 aria-labelledby="survey-fields-title"
@@ -230,6 +249,7 @@ export default function Survey({ model: m, session: s, prefs: p, setPrefs, open 
                 </ol>
               </section>
               <aside className="home-side survey-result-side" aria-label="추천 활동과 직무">
+                {/* 추천 활동: 열람 가능한 활동은 바로 열고, 아니면 활동 상세 창을 띄움 */}
                 <section className="home-panel survey-result-card" aria-labelledby="survey-activities-title">
                   <h3 id="survey-activities-title">추천 스터디 / 프로젝트</h3>
                   <p className="note-line">등록된 활동을 분야 순위대로 모았어요.</p>
@@ -269,6 +289,7 @@ export default function Survey({ model: m, session: s, prefs: p, setPrefs, open 
                     {!activities.length && <p className="note-line">현재 응답에 맞는 등록된 활동이 없어요.</p>}
                   </div>
                 </section>
+                {/* 추천 직무: 추천 분야(1위)에 연결된 직무 */}
                 <section className="home-panel survey-result-card" aria-labelledby="survey-jobs-title">
                   <h3 id="survey-jobs-title">추천 직무</h3>
                   <p className="note-line">최고 순위 분야에 연결한 직무예요.</p>

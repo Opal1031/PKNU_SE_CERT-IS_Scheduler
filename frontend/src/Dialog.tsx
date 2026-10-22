@@ -1,3 +1,5 @@
+// 공용 모달 창. ModalState.kind에 따라 활동·일정·예약·방·태그·회의록 관련 창의 내용을 바꿔 그리고,
+// 제출은 화면 설정 저장, 샘플 초기화, 또는 model.ts의 applyForm으로 처리한다.
 import { useEffect, useId, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { ModalState, Workspace } from './model';
@@ -32,11 +34,14 @@ import {
 import { Area, Checks, Empty, Field, Icon, IconButton, Select } from './ui';
 import type { ViewProps } from './ui';
 
+// 활동 선택 창의 활동 타일. 이름이 잘려 보일 때만 전체 이름 툴팁(popover)을 띄운다.
 function ActivityTile({ activity: x, label, close }: { activity: Workspace; label: string; close: () => void }) {
+  // 툴팁 위치를 잡을 CSS 앵커 이름과 이름·툴팁 요소 참조
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, ''),
     anchor = `--activity-${id}`;
   const name = useRef<HTMLSpanElement>(null),
     tooltip = useRef<HTMLSpanElement>(null);
+  // 이름이 넘칠 때만 열려 있는 다른 툴팁을 닫고 이 툴팁을 표시
   function show() {
     const text = name.current;
     if (text && (text.scrollHeight > text.clientHeight || text.scrollWidth > text.clientWidth)) {
@@ -50,6 +55,7 @@ function ActivityTile({ activity: x, label, close }: { activity: Workspace; labe
   function hide() {
     tooltip.current?.hidePopover();
   }
+  // 마우스와 키보드 포커스 모두로 툴팁을 열고, 둘 다 벗어났을 때만 닫는다.
   return (
     <a
       className="activity-tile"
@@ -83,6 +89,7 @@ function ActivityTile({ activity: x, label, close }: { activity: Workspace; labe
   );
 }
 
+/** 모달 창. state.kind별 제목·본문·하단 버튼을 그리고 폼 제출을 처리한다. */
 export default function Dialog({
   model: m,
   session: s,
@@ -94,6 +101,7 @@ export default function Dialog({
   close,
   done
 }: ViewProps & { state: ModalState; close: () => void; done: (state: ModalState, result?: string | number) => void }) {
+  // 대상 자료: state.id로 일정·예약·방을 찾고, 활동은 지정값이나 예약·방이 속한 활동으로 정함
   const { kind, id: target, groupId } = state;
   const e = m.events.find(e => same(e.id, target)),
     b = m.bookings.find(b => same(b.id, target)),
@@ -103,8 +111,11 @@ export default function Dialog({
     state.workspaceId ||
       (kind.startsWith('booking') ? b?.workspaceId : kind.startsWith('room') ? r?.workspaceId : undefined)
   );
+
+  // 일정 등록 가능한 활동(쓰기 권한)과 예약 가능한 활동(임원진은 보관 외 모든 활동)
   const allowed = m.workspaces.filter(x => writable(x, s));
   const bookingActivities = m.workspaces.filter(x => writable(x, s) || (s.officer && x.status !== '보관'));
+  // 일정 폼 상태: 선택한 활동('club'은 동아리 전체), 담당자 후보와 선택, 공개 범위
   const [chosenActivity, setActivity] = useState(
     String(
       kind === 'event' && e
@@ -120,10 +131,12 @@ export default function Dialog({
     e?.assigneeIds.length ? e.assigneeIds : candidates.includes(s.userId) ? [s.userId] : [candidates[0]].filter(Boolean)
   );
   const [visibility, setVisibility] = useState(e?.visibility || (chosenActivity === 'club' ? 'club' : 'workspace'));
+  // 구성원 관리 창의 선택 구성원과 팀장 위임 대상
   const [selectedMembers, setMembers] = useState(
     kind === 'room' ? r?.memberIds || [s.userId] : w?.memberIds || [s.userId]
   );
   const [newLeader, setLeader] = useState(w?.leaderId || s.userId);
+  // 오류 메시지와 활동 선택 창의 검색 상태·검색 결과
   const [error, setError] = useState(''),
     dialog = useRef<HTMLDialogElement>(null);
   const [searching, setSearching] = useState(false),
@@ -133,10 +146,14 @@ export default function Dialog({
   const activities = m.workspaces.filter(
     x => canView(x, s) && x.name.toLocaleLowerCase().includes(activityQuery.trim().toLocaleLowerCase())
   );
+  // 활동의 태그 그룹 목록과 state.groupId에 해당하는 그룹
   const groups = m.tagGroups[String(w?.id)] || [],
     group = groups.find(g => g.id === groupId);
+
+  // 읽기 전용: 팀장이 아닌 사람이 연 활동 정보, 수정 권한이 없는 일정
   const readOnly =
     kind === 'workspace-edit' ? !leader(w, s.userId) : kind === 'event' && e ? !eventEditable(e, m, s) : false;
+  // 조회용 창, 읽기 전용, 선택할 활동이 없는 경우에는 적용 버튼을 숨긴다.
   const viewKinds = [
     'workspace-info',
     'workspace-pick',
@@ -151,6 +168,9 @@ export default function Dialog({
     !readOnly &&
     !(kind === 'event' && !e && !allowed.length && !s.officer) &&
     !(kind === 'booking' && !bookingActivities.length);
+
+  // 열릴 때 첫 입력 칸에 포커스. 활동 선택 창은 popover로 띄우고,
+  // 닫힐 때 포커스가 사라졌으면 창을 열었던 요소로 되돌린다.
   useEffect(() => {
     const el = dialog.current;
     const opener = document.activeElement as HTMLElement | null;
@@ -170,9 +190,13 @@ export default function Dialog({
       }
     };
   }, []);
+  // 활동 검색창을 열면 검색창에 포커스
   useEffect(() => {
     if (searching) activitySearch.current?.focus();
   }, [searching]);
+
+  // 폼 제출: 필터·정렬은 화면 설정에 저장, 초기화는 샘플 자료로 되돌리고 초안 삭제,
+  // 나머지는 applyForm으로 자료를 변경한다. 실패하면 창 안에 오류를 표시한다.
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget),
@@ -205,6 +229,7 @@ export default function Dialog({
       setError((err as Error).message);
     }
   }
+  // 태그 그룹(tagId가 없을 때) 또는 그룹 안 태그의 순서를 delta만큼 옮김
   function reorder(groupId: string, tagId: string | undefined, delta: number) {
     try {
       mutate(tagId ? '태그 순서 변경' : '그룹 순서 변경', s, next => {
@@ -220,6 +245,8 @@ export default function Dialog({
       setError((err as Error).message);
     }
   }
+
+  // 모달 종류별 제목
   const title: Record<ModalState['kind'], string> = {
     'workspace-info': '활동 상세',
     'workspace-apply': '참가 신청',
@@ -250,8 +277,11 @@ export default function Dialog({
     'document-history': '최근 저장 이력',
     reset: '샘플 초기화'
   };
+
+  // 모달 종류별 본문
   let body: React.ReactNode;
   switch (kind) {
+    // 활동 선택 창: 프로젝트·스터디별 활동 타일, 검색어로 걸러 표시
     case 'workspace-pick':
       body = (
         <>
@@ -292,6 +322,7 @@ export default function Dialog({
         </>
       );
       break;
+    // 활동 상세: 기본 정보와 참여 상태. 구성원·최근 변경은 열람 권한이 있을 때만
     case 'workspace-info':
       body = w ? (
         <>
@@ -328,6 +359,7 @@ export default function Dialog({
         <Empty>활동을 찾을 수 없습니다.</Empty>
       );
       break;
+    // 참가 신청 확인
     case 'workspace-apply':
       body = w ? (
         <>
@@ -342,6 +374,7 @@ export default function Dialog({
         <Empty>활동을 찾을 수 없습니다.</Empty>
       );
       break;
+    // 활동 목록 필터(유형·분야·상태·팀장)와 정렬
     case 'list-filters':
       body = (
         <>
@@ -381,6 +414,7 @@ export default function Dialog({
         </>
       );
       break;
+    // 캘린더 표시 조건. 임원진은 개인 캘린더에서 전체 활동 범위도 선택 가능
     case 'calendar-filters':
       body = (
         <>
@@ -401,6 +435,7 @@ export default function Dialog({
         </>
       );
       break;
+    // 채팅방 정렬 기준과 태그 순서 정렬에 쓸 기준 그룹
     case 'room-sort':
       body = (
         <>
@@ -423,6 +458,7 @@ export default function Dialog({
         </>
       );
       break;
+    // 활동 생성·정보 수정. 생성 시에는 유형·구성원, 수정 시에는 상태를 고른다.
     case 'workspace-new':
     case 'workspace-edit':
       body = (
@@ -468,6 +504,7 @@ export default function Dialog({
         </>
       );
       break;
+    // 구성원 관리와 팀장 위임. 참가 신청자는 구성원으로 체크해 승인한다.
     case 'members':
       body = (
         <>
@@ -490,6 +527,7 @@ export default function Dialog({
         </>
       );
       break;
+    // 일정 등록·수정. 활동을 바꾸면 담당자 후보와 공개 범위를 다시 맞춘다.
     case 'event':
       body =
         !e && !allowed.length && !s.officer ? (
@@ -564,6 +602,7 @@ export default function Dialog({
           </>
         );
       break;
+    // 동아리방 예약 신청·변경(30분 단위). 예약 가능한 활동이 없으면 안내
     case 'booking':
       body = !bookingActivities.length ? (
         <Empty>
@@ -602,6 +641,7 @@ export default function Dialog({
         </>
       );
       break;
+    // 예약 상세. 활동명과 사용 목적은 해당 활동 구성원과 임원진에게만 표시
     case 'booking-info': {
       const full = b && (member(workspace(m, b.workspaceId), s.userId) || s.officer);
       body = b ? (
@@ -627,6 +667,7 @@ export default function Dialog({
       );
       break;
     }
+    // 예약 취소 사유 입력
     case 'booking-cancel':
       body = (
         <>
@@ -635,6 +676,7 @@ export default function Dialog({
         </>
       );
       break;
+    // 방 생성·수정: 이름, 참여 구성원, 태그
     case 'room':
       body = (
         <>
@@ -655,6 +697,7 @@ export default function Dialog({
         </>
       );
       break;
+    // 방 관리: 활동의 방 목록과 수정·보관 버튼. 보관된 방은 이 창에서 바로 복원
     case 'room-settings':
       body = (
         <>
@@ -706,6 +749,7 @@ export default function Dialog({
         </>
       );
       break;
+    // 태그 그룹 관리: 그룹·태그 순서 변경, 이름 변경·삭제·태그 추가 창 열기
     case 'tags':
       body = (
         <>
@@ -769,6 +813,7 @@ export default function Dialog({
         </>
       );
       break;
+    // 그룹·태그 추가와 이름 변경에 함께 쓰는 이름 입력칸
     case 'group-new':
     case 'group-rename':
     case 'tag-new':
@@ -789,6 +834,7 @@ export default function Dialog({
         />
       );
       break;
+    // 그룹·태그 삭제 확인. 태그 연결이 해제될 방 개수를 보여 준다.
     case 'group-delete':
     case 'tag-delete': {
       const ids =
@@ -797,6 +843,7 @@ export default function Dialog({
       body = <p>{count}개 방의 태그 연결을 제거함. 방과 기록은 그대로 보존됨</p>;
       break;
     }
+    // 활동의 방별 회의록으로 가는 링크 목록
     case 'document-pick':
       body = (
         <>
@@ -814,6 +861,7 @@ export default function Dialog({
         </>
       );
       break;
+    // 회의록 이전 저장본 목록(펼쳐서 내용 확인)
     case 'document-history':
       body = (
         <>
@@ -829,6 +877,7 @@ export default function Dialog({
         </>
       );
       break;
+    // 안내 문구만 있는 확인 창: 활동 탈퇴, 일정 삭제, 방 보관, 샘플 초기화
     case 'leave':
       body = <p>활동과 방 접근권을 잃지만 작성 기록은 유지됨. 팀장은 먼저 위임해야 함</p>;
       break;
@@ -842,6 +891,8 @@ export default function Dialog({
       body = <p>활동·일정·예약·문서·초안의 현재 변경을 제거하고 샘플로 되돌림</p>;
       break;
   }
+
+  // 활동 선택 창은 popover, 나머지는 일반 dialog로 연다. Esc는 열린 툴팁이 있으면 툴팁부터 닫는다.
   return (
     <dialog
       open={picking ? undefined : true}
@@ -869,6 +920,7 @@ export default function Dialog({
       }}
     >
       <form onSubmit={submit}>
+        {/* 제목과 닫기 버튼. 활동 선택 창에는 검색·활동 생성 버튼을 함께 둠 */}
         <header className="modal-heading">
           <h2 id="modal-title">{title[kind]}</h2>
           <div className="modal-heading-actions">
@@ -897,6 +949,7 @@ export default function Dialog({
             <IconButton title="닫기" icon="close" onClick={close} />
           </div>
         </header>
+        {/* 본문. 읽기 전용이면 입력을 모두 비활성화하고, 오류는 본문 아래에 표시 */}
         <div className="modal-body">
           <fieldset disabled={readOnly} className="form-body">
             {body}
@@ -908,8 +961,10 @@ export default function Dialog({
             </p>
           )}
         </div>
+        {/* 하단 버튼: 모달 종류별 보조 버튼, 적용, 닫기(활동 선택 창은 없음) */}
         {!picking && (
           <footer className="modal-footer">
+            {/* 활동 상세: 활동 열기, 미참여자는 참가 신청 */}
             {kind === 'workspace-info' && w && (
               <>
                 {canView(w, s) && (
@@ -933,6 +988,7 @@ export default function Dialog({
                 )}
               </>
             )}
+            {/* 활동 정보: 팀장은 구성원 관리, 팀원은 탈퇴 */}
             {kind === 'workspace-edit' &&
               w &&
               (leader(w, s.userId) ? (
@@ -950,6 +1006,7 @@ export default function Dialog({
                   </button>
                 )
               ))}
+            {/* 수정 가능한 기존 일정의 삭제 */}
             {kind === 'event' && e && !readOnly && (
               <button
                 type="button"
@@ -959,6 +1016,7 @@ export default function Dialog({
                 삭제
               </button>
             )}
+            {/* 취소되지 않은 예약의 변경·취소(예약자·팀장·임원진) */}
             {kind === 'booking-info' && b && b.status !== '취소' && bookingEditable(b, m, s) && (
               <>
                 <button
@@ -977,6 +1035,7 @@ export default function Dialog({
                 </button>
               </>
             )}
+            {/* 방 관리: 태그 그룹 관리, 방 생성 */}
             {kind === 'room-settings' && writable(w, s) && (
               <>
                 <button type="button" className="button" onClick={() => open({ kind: 'tags', workspaceId: w!.id })}>
@@ -987,11 +1046,13 @@ export default function Dialog({
                 </button>
               </>
             )}
+            {/* 태그 그룹 관리: 그룹 추가 */}
             {kind === 'tags' && writable(w, s) && (
               <button type="button" className="button" onClick={() => open({ kind: 'group-new', workspaceId: w!.id })}>
                 그룹 추가
               </button>
             )}
+            {/* 적용(참가 신청 창은 신청 보내기)과 닫기 */}
             {canApply && (
               <button className="button primary" type="submit">
                 {kind === 'workspace-apply' ? '신청 보내기' : '적용'}
