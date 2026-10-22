@@ -97,9 +97,7 @@
   .login-card .form-field { margin-bottom: 0; }
   .login-card form > .button { margin-top: 5px; padding: 10px; }
   .login-help { font-size: 11px; color: var(--color-muted); line-height: 1.7; margin: 18px 0 24px; }
-  .demo-login { display: grid; gap: 12px; border-top: 1px solid var(--color-line); padding-top: 22px; }
-  .demo-login h2 { font-size: 13px; }
-  .demo-login p { font-size: 11px; color: var(--color-muted); }
+  .signup-done { display: grid; gap: 12px; font-size: 13px; line-height: 1.7; }
   .chat-sidebar { width: var(--chat); flex-basis: var(--chat); }
   .chat-header { height: 64px; flex: 0 0 64px; display: flex; align-items: center; gap: 5px; border-bottom: 1px solid var(--color-line); padding: 9px 10px; }
   .room-title { flex: 1; min-width: 0; text-align: left; }

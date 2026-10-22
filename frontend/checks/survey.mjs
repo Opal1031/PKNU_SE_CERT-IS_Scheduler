@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-// Use a disposable demo user's empty survey, then await checkSurvey(tab).
+// 설문 응답이 비어 있는 계정으로 로그인한 탭에서 await checkSurvey(tab).
 export async function checkSurvey(tab) {
   const page = tab.playwright;
   await page.getByRole('link', { name: 'AI 설문', exact: true }).click();
