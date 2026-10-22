@@ -19,10 +19,12 @@ router = APIRouter(
 
 
 def _audit(db: Session, actor: User, action: str, target: User) -> None:
+    """임원진의 계정 관리 동작을 감사 기록에 추가한다. 커밋은 호출한 쪽에서 한다."""
     db.add(AuditLog(user_id=actor.id, action=action, target_type="user", target_id=str(target.id)))
 
 
 def _account(db: Session, user_id: int) -> User:
+    """관리 대상 계정을 찾는다. 없으면 404."""
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="계정을 찾을 수 없음")
@@ -31,6 +33,7 @@ def _account(db: Session, user_id: int) -> User:
 
 @router.get("", response_model=list[UserOut], summary="전체 계정 목록(비활성 포함)")
 def list_accounts(db: DB, _: Officer) -> list[User]:
+    """승인 대기·비활성 계정까지 모든 계정을 번호순으로 돌려준다."""
     return list(db.scalars(select(User).order_by(User.id)))
 
 
@@ -67,6 +70,7 @@ def create_account(body: UserCreate, db: DB, officer: Officer) -> User:
     },
 )
 def update_account(user_id: int, body: UserUpdate, db: DB, officer: Officer) -> User:
+    """보낸 필드만 바꾼다. 승인 대기 계정을 활성으로 바꾸면 회원가입 승인이 된다."""
     user = _account(db, user_id)
     changes = body.model_dump(exclude_unset=True)
     # 마지막 임원이 스스로 권한을 내려놓아 아무도 관리할 수 없게 되는 상황을 막는다.
@@ -77,10 +81,14 @@ def update_account(user_id: int, body: UserUpdate, db: DB, officer: Officer) -> 
     if changes.get("username"):
         # 토큰에는 계정 번호만 들어 있어 아이디를 바꿔도 로그인 상태는 유지된다.
         ensure_username_free(db, changes["username"], user.id)
+
+    # null로 보낸 필드는 건너뛰고 값이 있는 필드만 반영한다.
     for key, value in changes.items():
         if value is not None:
             setattr(user, key, value)
     _audit(db, officer, "계정 변경", user)
+
+    # 확인 이후 다른 요청이 같은 아이디를 먼저 저장했으면 UNIQUE 제약 오류를 409로 바꾼다.
     try:
         db.commit()
     except IntegrityError:

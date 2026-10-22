@@ -25,6 +25,8 @@ class ChatRoom(CreatedAtMixin, Base):
 
 
 class ChatRoomMember(Base):
+    """채팅방 참여자와 그 사람이 마지막으로 읽은 메시지 위치."""
+
     __tablename__ = "chat_room_members"
 
     room_id: Mapped[int] = mapped_column(ForeignKey("chat_rooms.id", ondelete="CASCADE"), primary_key=True)
@@ -33,6 +35,8 @@ class ChatRoomMember(Base):
 
 
 class Message(CreatedAtMixin, Base):
+    """채팅 메시지. 많이 쌓이는 테이블이라 ID는 BigId(MySQL BIGINT)를 쓴다."""
+
     __tablename__ = "messages"
     __table_args__ = (Index("ix_messages_room_id_id", "room_id", "id"),)  # 방별 최근 메시지·이전 메시지 조회
 
@@ -55,6 +59,8 @@ class TagGroup(Base):
 
 
 class Tag(Base):
+    """태그 그룹에 속한 태그. 같은 그룹 안에서는 이름이 겹치지 않는다."""
+
     __tablename__ = "tags"
     __table_args__ = (UniqueConstraint("group_id", "name"),)
 

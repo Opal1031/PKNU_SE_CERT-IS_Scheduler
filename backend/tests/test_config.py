@@ -1,3 +1,5 @@
+"""배포 설정 테스트: DB 주소 변환, 인증서 값 정리, 운영 환경 설정 검사, 의존성 목록 일치."""
+
 from app.core.config import _pem, normalize_database_url
 
 

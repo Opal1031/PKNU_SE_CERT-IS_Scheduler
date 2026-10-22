@@ -1,3 +1,5 @@
+"""인증 API(회원가입·로그인·내 정보)와 토큰·CORS 동작 테스트."""
+
 from tests.support import PASSWORD, login, make_user
 
 

@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from app.core import permissions as perm
 
+# 임원진(활동 미참여), 팀장, 팀원, 미참여 일반부원
 officer = SimpleNamespace(id=1, role="officer")
 leader = SimpleNamespace(id=2, role="member")
 teammate = SimpleNamespace(id=3, role="member")
@@ -11,6 +12,7 @@ outsider = SimpleNamespace(id=4, role="member")
 
 
 def workspace(status: str = "진행 중"):
+    """leader가 팀장이고 teammate가 팀원인 활동."""
     return SimpleNamespace(leader_id=leader.id, status=status, member_ids=[leader.id, teammate.id])
 
 

@@ -25,6 +25,7 @@ def list_users(db: DB, _: CurrentUser) -> list[User]:
     responses={status.HTTP_400_BAD_REQUEST: {"model": ErrorOut}},
 )
 def change_password(body: PasswordChange, db: DB, user: CurrentUser) -> None:
+    """현재 비밀번호를 확인한 뒤 새 비밀번호로 바꾼다. 현재 비밀번호가 틀리면 400."""
     if not verify_password(body.current_password, user.password_hash):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="현재 비밀번호가 올바르지 않음")
     user.password_hash = hash_password(body.new_password)

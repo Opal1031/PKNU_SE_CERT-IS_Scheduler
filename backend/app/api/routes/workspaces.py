@@ -21,6 +21,7 @@ router = APIRouter(tags=["활동"])
 
 
 def to_out(ws: Workspace, user: User) -> WorkspaceOut:
+    """활동을 응답 형식으로 바꾸면서 요청한 사용자의 관계(my_role: 팀장/팀원/viewer)를 붙인다."""
     my_role = "leader" if perm.is_leader(ws, user) else "member" if perm.is_member(ws, user) else "viewer"
     return WorkspaceOut.model_validate(
         {
@@ -61,6 +62,7 @@ def list_workspaces(
         Literal["mine", "all"], Query(description="mine=내가 참여한 활동, all=전체 활동(임원진 전용)")
     ] = "mine",
 ) -> list[WorkspaceOut]:
+    """기본은 내가 참여한 활동만, scope=all이면 전체 활동을 돌려준다(임원진 전용, 일반부원은 403)."""
     query = select(Workspace).options(selectinload(Workspace.memberships)).order_by(Workspace.id)
     if scope == "all":
         if not perm.is_officer(user):

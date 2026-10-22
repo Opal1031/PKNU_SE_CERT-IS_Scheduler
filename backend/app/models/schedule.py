@@ -43,6 +43,8 @@ class Event(TimestampMixin, Base):
 
 
 class EventAssignee(Base):
+    """일정 담당자(일정 ↔ 사용자 다대다). 개인 일정은 담당자에게만 보인다."""
+
     __tablename__ = "event_assignees"
 
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"), primary_key=True)

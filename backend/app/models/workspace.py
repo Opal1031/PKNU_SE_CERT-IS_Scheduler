@@ -42,6 +42,7 @@ class Workspace(TimestampMixin, Base):
 
     @property
     def member_ids(self) -> list[int]:
+        """구성원 ID 목록. 권한 판단(permissions.WorkspaceLike)과 응답에 쓴다."""
         return [m.user_id for m in self.memberships]
 
 
