@@ -21,9 +21,9 @@ DEFAULT_PASSWORD = "certis1234!"
 # (아이디, 표시 이름, 역할) — 운영진 계정과 팀원 계정
 DEMO_USERS = [
     ("admin", "운영진", "officer"),
-    ("gitae", "기태", "member"),
+    ("kitae", "기태", "member"),
     ("minseo", "민서", "member"),
-    ("hyelim", "혜림", "member"),
+    ("hyerim", "혜림", "member"),
     ("yeonwoo", "연우", "member"),
 ]
 
@@ -36,17 +36,17 @@ DEMO_WORKSPACES = [
         "웹 보안",
         "동아리 운영을 하나의 공간으로",
         "minseo",
-        ["minseo", "gitae", "hyelim", "yeonwoo"],
+        ["minseo", "kitae", "hyerim", "yeonwoo"],
     ),
-    ("project", "웹 취약점 연구", "WS", "웹 보안", "웹 취약점 분석과 실습", "minseo", ["minseo", "gitae"]),
+    ("project", "웹 취약점 연구", "WS", "웹 보안", "웹 취약점 분석과 실습", "minseo", ["minseo", "kitae"]),
     (
         "study",
         "네트워크 보안",
         "NS",
         "네트워크",
         "네트워크 기본기와 보안 학습",
-        "hyelim",
-        ["gitae", "minseo", "hyelim"],
+        "hyerim",
+        ["kitae", "minseo", "hyerim"],
     ),
     ("project", "침해 대응 연구", "IR", "웹 보안", "로그 분석과 침해 대응 시나리오 연구", "yeonwoo", ["yeonwoo"]),
     ("study", "암호학 기초", "CR", "암호학", "암호 알고리즘과 기초 수학 학습", "yeonwoo", ["yeonwoo"]),

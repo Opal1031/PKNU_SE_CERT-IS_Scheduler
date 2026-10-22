@@ -8,9 +8,11 @@ export const fields = ['웹 보안', '네트워크', '암호학', '시스템 보
 export const statuses = ['계획', '진행 중', '보류', '완료', '보관'];
 export const users = [{ id: 'me', name: '나' }, { id: 'gitae', name: '기태' }, { id: 'minseo', name: '민서' }, { id: 'hyelim', name: '혜림' }, { id: 'jisu', name: '지수' }, { id: 'doyun', name: '도윤' }, { id: 'subin', name: '수빈' }];
 // ponytail: 활동·일정 API가 연결되기 전까지 서버 계정을 로컬 샘플 사용자 ID로 연결한다.
-// 서버 demo 계정은 샘플의 '나'(me)이고, 샘플에 없는 계정은 구성원이 아닌 사용자로 추가한다.
+// 서버 아이디가 샘플 ID와 다른 계정만 따로 잇고(demo → 나, kitae → 기태, hyerim → 혜림),
+// 샘플에 없는 계정은 구성원이 아닌 사용자로 추가한다.
+const LOCAL_ALIASES: Record<string, string> = { demo: 'me', kitae: 'gitae', hyerim: 'hyelim' };
 export function localUserId(account: { username: string; name: string }) {
-  const userId = account.username === 'demo' ? 'me' : account.username;
+  const userId = LOCAL_ALIASES[account.username] ?? account.username;
   if (!users.some(u => u.id === userId)) users.push({ id: userId, name: account.name });
   return userId;
 }
@@ -232,7 +234,7 @@ export function setDraft(user: string, rid: Id, draft?: Draft) {
   const drafts = readLocal<Record<string, Draft>>(DRAFTS, {}), key = `${user}:${rid}`;
   if (draft) drafts[key] = draft; else delete drafts[key]; writeLocal(DRAFTS, drafts);
 }
-export type ModalKind = 'workspace-info' | 'workspace-apply' | 'profile' | 'list-filters' | 'calendar-filters' | 'room-sort' | 'workspace-pick' | 'workspace-new' | 'workspace-edit' | 'members' | 'leave' | 'event' | 'event-delete' | 'booking' | 'booking-info' | 'booking-cancel' | 'room' | 'room-settings' | 'room-archive' | 'tags' | 'group-new' | 'group-rename' | 'tag-new' | 'tag-rename' | 'group-delete' | 'tag-delete' | 'document-pick' | 'document-history' | 'reset';
+export type ModalKind = 'workspace-info' | 'workspace-apply' | 'list-filters' | 'calendar-filters' | 'room-sort' | 'workspace-pick' | 'workspace-new' | 'workspace-edit' | 'members' | 'leave' | 'event' | 'event-delete' | 'booking' | 'booking-info' | 'booking-cancel' | 'room' | 'room-settings' | 'room-archive' | 'tags' | 'group-new' | 'group-rename' | 'tag-new' | 'tag-rename' | 'group-delete' | 'tag-delete' | 'document-pick' | 'document-history' | 'reset';
 export interface ModalState { kind: ModalKind; id?: Id; workspaceId?: Id; groupId?: string; date?: string; start?: string }
 export interface Preferences extends Session {
   collapsed: boolean; chatWidth: number; chatWorkspaceId: Id; chatRooms: Record<string, Id>;
