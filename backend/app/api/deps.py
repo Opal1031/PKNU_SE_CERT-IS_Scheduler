@@ -34,6 +34,16 @@ def forbidden(detail: str) -> HTTPException:
     return HTTPException(status.HTTP_403_FORBIDDEN, detail=detail)
 
 
+USERNAME_TAKEN = "이미 사용 중인 아이디임"
+
+
+def ensure_username_free(db: Session, username: str, user_id: int | None = None) -> None:
+    """다른 계정이 쓰는 아이디면 409. 동시에 같은 아이디로 저장하면 UNIQUE 제약이 한 번 더 막는다."""
+    owner = db.scalar(select(User.id).where(User.username == username))
+    if owner is not None and owner != user_id:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=USERNAME_TAKEN)
+
+
 def get_current_user(db: DB, credentials: Credentials) -> User:
     if credentials is None:
         raise unauthorized()

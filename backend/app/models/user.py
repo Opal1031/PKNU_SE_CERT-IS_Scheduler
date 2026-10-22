@@ -6,7 +6,7 @@ from app.db.base import Base, TimestampMixin
 
 
 class User(TimestampMixin, Base):
-    """동아리 계정. 회원가입 없이 임원진이 계정을 발급한다."""
+    """동아리 계정. 회원가입 후 임원진이 승인하거나, 임원진이 직접 발급한다."""
 
     __tablename__ = "users"
 
@@ -15,4 +15,4 @@ class User(TimestampMixin, Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(50))  # 화면 표시 이름
     role: Mapped[str] = mapped_column(Enum(*ROLES, name="user_role"), default=MEMBER)  # officer=임원진, member=일반부원
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)  # 탈퇴·정지 시 로그인 차단
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)  # 가입 승인 전·탈퇴·정지 시 로그인 차단

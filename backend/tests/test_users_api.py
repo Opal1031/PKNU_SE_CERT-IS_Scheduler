@@ -70,6 +70,24 @@ def test_password_reset_rules(client, people):
     assert missing.status_code == 404
 
 
+def test_officer_changes_username(client, people):
+    admin, bob = login(client, "officer"), login(client, "bob")
+    res = client.patch(f"/api/admin/users/{people['bob'].id}", json={"username": "robert"}, headers=admin)
+    assert res.status_code == 200 and res.json()["username"] == "robert"
+    assert client.post("/api/auth/login", json={"username": "bob", "password": PASSWORD}).status_code == 401
+    assert client.post("/api/auth/login", json={"username": "robert", "password": PASSWORD}).status_code == 200
+    # 토큰에는 계정 번호만 있어 아이디를 바꿔도 이미 로그인한 상태는 유지된다.
+    assert client.get("/api/auth/me", headers=bob).json()["username"] == "robert"
+
+
+def test_username_change_rules(client, people):
+    admin = login(client, "officer")
+    url = f"/api/admin/users/{people['bob'].id}"
+    assert client.patch(url, json={"username": "alice"}, headers=admin).status_code == 409
+    assert client.patch(url, json={"username": "no spaces"}, headers=admin).status_code == 422
+    assert client.patch(url, json={"username": "bob"}, headers=admin).status_code == 200  # 지금 아이디 그대로는 허용
+
+
 def test_update_unknown_account(client, people):
     admin = login(client, "officer")
     assert client.patch("/api/admin/users/9999", json={"name": "x"}, headers=admin).status_code == 404
