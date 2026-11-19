@@ -59,6 +59,12 @@ class Settings:
     jwt_secret: str = field(default_factory=lambda: os.getenv("JWT_SECRET", DEV_JWT_SECRET))
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = field(default_factory=lambda: int(os.getenv("ACCESS_TOKEN_MINUTES", "720")))
+    # AI 보안 분야 추천(WBS 6.1)에 쓰는 OpenAI API 설정.
+    # 키가 없으면 추천 호출을 건너뛰고 점수 기반 결과만 돌려준다(화면이 멈추지 않게).
+    openai_api_key: str | None = field(default_factory=lambda: (os.getenv("OPENAI_API_KEY") or "").strip() or None)
+    openai_model: str = field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    openai_base_url: str | None = field(default_factory=lambda: (os.getenv("OPENAI_BASE_URL") or "").strip() or None)
+    openai_timeout_seconds: float = field(default_factory=lambda: float(os.getenv("OPENAI_TIMEOUT_SECONDS", "20")))
     # 프론트엔드 개발 서버(vite)가 127.0.0.1:8765에서 실행된다.
     cors_origins: list[str] = field(
         default_factory=lambda: _split(os.getenv("CORS_ORIGINS", "http://127.0.0.1:8765,http://localhost:8765"))
@@ -72,6 +78,11 @@ class Settings:
             raise RuntimeError("운영 환경에서는 32바이트 이상의 JWT_SECRET 환경 변수를 반드시 지정해야 함")
         if self.database_url.startswith("sqlite"):
             raise RuntimeError("운영 환경에서는 DATABASE_URL 환경 변수로 MySQL 주소를 반드시 지정해야 함")
+
+    @property
+    def ai_enabled(self) -> bool:
+        """OpenAI 키가 있으면 True. False면 추천 설명 없이 점수 기반 결과만 제공한다."""
+        return self.openai_api_key is not None
 
 
 # 앱 전체가 함께 쓰는 설정. 모듈을 처음 불러올 때 환경 변수를 한 번 읽는다.

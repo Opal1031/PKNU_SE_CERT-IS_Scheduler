@@ -7,3 +7,5 @@ PyMySQL==1.1.1
 # MySQL 8 기본 인증(caching_sha2_password)을 PyMySQL로 처리할 때 필요
 cryptography==50.0.1
 PyJWT==2.15.0
+# AI 보안 분야 추천(WBS 6.1)에 쓰는 OpenAI 공식 SDK
+openai==3.55.1

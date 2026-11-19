@@ -152,7 +152,7 @@ POST /api/auth/login
 | 7.1 · BE | POST | `/api/reservations` | 구성원·임원진 | `{workspaceId, date, start, end, purpose}` — 겹치면 409 |
 | 7.1 · BE | PATCH | `/api/reservations/{id}` | 예약자·팀장·임원진 | 시간 변경 시 슬롯 재점유(겹치면 409) |
 | 7.1 · BE | POST | `/api/reservations/{id}/cancel` | 예약자·팀장·임원진 | `{reason}` — 슬롯 해제, 기록은 유지 |
-| 6.x · AI | POST | `/api/ai/survey` | 로그인 | `{answers}` → `{scores, recommendation}` (Gemini) |
+| 6.x · AI | POST | `/api/ai/survey` | 로그인 | `{answers}` → `{scores, recommendation}` (OpenAI) |
 | 6.x · AI | GET | `/api/ai/survey/latest` | 로그인 | 마지막 결과 복원 |
 
 ### 예약 중복 차단 방식(7.1)

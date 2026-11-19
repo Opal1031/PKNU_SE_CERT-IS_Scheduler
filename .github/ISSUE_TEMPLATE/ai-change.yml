@@ -1,5 +1,5 @@
 name: AI 추천 기능 제안 (AI)
-description: 진단 문항, 프롬프트, Gemini 연동 또는 추천 결과 화면의 변경을 제안합니다.
+description: 진단 문항, 프롬프트, OpenAI 연동 또는 추천 결과 화면의 변경을 제안합니다.
 title: "[AI] "
 labels: ["ai", "feat"]
 body:
@@ -7,7 +7,7 @@ body:
     id: target
     attributes:
       label: 대상 영역
-      placeholder: 진단 문항, 가중치, 프롬프트, Gemini API, 결과 화면 등
+      placeholder: 진단 문항, 가중치, 프롬프트, OpenAI API, 결과 화면 등
     validations:
       required: true
   - type: textarea

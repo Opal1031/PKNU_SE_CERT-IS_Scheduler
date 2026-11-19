@@ -12,6 +12,7 @@ dependencies = [
     "PyMySQL==1.1.1",
     "cryptography==50.0.1",
     "PyJWT==2.15.0",
+    "openai==3.55.1",
 ]
 
 # Vercel 배포: 빌드할 때 테이블 생성·샘플 입력(이미 있으면 건너뜀)을 먼저 실행한다.
