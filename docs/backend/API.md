@@ -110,6 +110,7 @@ POST /api/auth/login
 | PUT | `/api/workspaces/{id}/members` | 팀장 | `{memberIds, leaderId}` 구성원 교체·팀장 위임 |
 | POST | `/api/workspaces/{id}/leave` | 팀원 | 활동 나가기 → 204. 팀장은 먼저 위임해야 함(400) |
 | POST | `/api/workspaces/{id}/applications` | 미참여 | 참가 신청 → 201. 종료·보관 활동 400, 중복 신청 409 |
+| POST | `/api/workspaces/{id}/archive` | 팀장·임원진 | 보관 → 조회 전용. 이미 보관됐으면 400 |
 
 **목록 필터** — 모두 선택이며 지정한 것끼리 AND로 묶인다.
 
@@ -128,6 +129,10 @@ GET /api/workspaces?scope=mine&type=study&field=암호학&status=보류&leaderId
 | `order` | `id`(기본) · `name` · `updated` | `updated`는 최신순 |
 
 **구성원 변경 시 주의** — 명단에서 빠진 사람은 그 활동의 채팅방에서도 함께 빠진다. 남는 구성원의 가입 시각(`joined_at`)은 보존된다.
+
+**활동 삭제 대신 보관** — `DELETE`는 두지 않는다. 회의록·채팅 메시지·예약·일정이 활동에 `ondelete="CASCADE"`로 묶여 있어, 행을 지우면 그 활동에서 오간 **기록이 전부 함께 사라지기** 때문이다. 잘못 만든 활동을 치우려다 회의 기록을 잃는 쪽이 더 큰 손해다.
+
+보관하면 조회 전용이 되어 일정·회의록·채팅 전송이 모두 막히고, 목록에서는 `status` 필터로 걸러낸다. 되돌리려면 `PATCH`로 상태를 바꾸면 된다.
 
 ### 회의록 (WBS 5.3)
 

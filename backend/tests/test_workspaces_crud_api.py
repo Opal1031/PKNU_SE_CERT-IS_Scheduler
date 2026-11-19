@@ -212,3 +212,66 @@ def test_search_treats_wildcards_literally(client, people, db):
     make_workspace(db, "웹 해킹", alice, [alice])
     res = client.get("/api/workspaces?q=%", headers=login(client, "alice"))
     assert res.json() == []
+
+
+# --- 보관 ---------------------------------------------------------------
+
+
+def test_leader_can_archive(client, people, db):
+    ws = make_workspace(db, "활동", people["alice"], [people["alice"]])
+    res = client.post(f"/api/workspaces/{ws.id}/archive", headers=login(client, "alice"))
+    assert res.status_code == 200
+    assert res.json()["status"] == "보관"
+
+
+def test_officer_can_archive_without_joining(client, people, db):
+    ws = make_workspace(db, "활동", people["alice"], [people["alice"]])
+    assert client.post(f"/api/workspaces/{ws.id}/archive", headers=login(client, "officer")).status_code == 200
+
+
+def test_plain_member_cannot_archive(client, people, db):
+    ws = make_workspace(db, "활동", people["alice"], [people["alice"], people["bob"]])
+    assert client.post(f"/api/workspaces/{ws.id}/archive", headers=login(client, "bob")).status_code == 403
+
+
+def test_cannot_archive_twice(client, people, db):
+    ws = make_workspace(db, "활동", people["alice"], [people["alice"]], status="보관")
+    assert client.post(f"/api/workspaces/{ws.id}/archive", headers=login(client, "alice")).status_code == 400
+
+
+def test_archived_workspace_becomes_read_only(client, people, db):
+    """보관하면 일정 등록 같은 변경이 막힌다."""
+    ws = make_workspace(db, "활동", people["alice"], [people["alice"]])
+    head = login(client, "alice")
+    client.post(f"/api/workspaces/{ws.id}/archive", headers=head)
+    res = client.post(
+        "/api/events",
+        json={
+            "workspaceId": ws.id,
+            "title": "일정",
+            "startDate": "2026-12-10",
+            "endDate": "2026-12-10",
+            "startTime": "10:00:00",
+            "endTime": "11:00:00",
+        },
+        headers=head,
+    )
+    assert res.status_code == 403
+
+
+def test_archived_workspace_can_be_restored_by_patch(client, people, db):
+    ws = make_workspace(db, "활동", people["alice"], [people["alice"]])
+    head = login(client, "alice")
+    client.post(f"/api/workspaces/{ws.id}/archive", headers=head)
+    res = client.patch(f"/api/workspaces/{ws.id}", json={"status": "진행 중"}, headers=head)
+    assert res.status_code == 200 and res.json()["status"] == "진행 중"
+
+
+def test_archived_workspace_is_filtered_out_by_status(client, people, db):
+    alice = people["alice"]
+    make_workspace(db, "살아있는 활동", alice, [alice])
+    ws = make_workspace(db, "치울 활동", alice, [alice])
+    head = login(client, "alice")
+    client.post(f"/api/workspaces/{ws.id}/archive", headers=head)
+    names = [w["name"] for w in client.get("/api/workspaces?status=진행 중", headers=head).json()]
+    assert names == ["살아있는 활동"]
