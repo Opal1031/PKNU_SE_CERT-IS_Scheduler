@@ -20,14 +20,13 @@ export const users = [
   { id: 'doyun', name: '도윤' },
   { id: 'subin', name: '수빈' }
 ];
-// ponytail: 활동·일정 API가 연결되기 전까지 서버 계정을 로컬 샘플 사용자 ID로 연결한다.
-// 서버 아이디가 샘플 ID와 다른 계정만 따로 잇고(demo → 나, kitae → 기태, hyerim → 혜림),
-// 샘플에 없는 계정은 구성원이 아닌 사용자로 추가한다.
-const LOCAL_ALIASES: Record<string, string> = { demo: 'me', kitae: 'gitae', hyerim: 'hyelim' };
-export function localUserId(account: { username: string; name: string }) {
-  const userId = LOCAL_ALIASES[account.username] ?? account.username;
-  if (!users.some(u => u.id === userId)) users.push({ id: userId, name: account.name });
-  return userId;
+/**
+ * 서버 사용자 목록으로 users 를 교체한다. 서버 ID(숫자)를 문자열로 쓰며, 화면의
+ * name(id) 조회가 서버 이름을 찾게 된다. 로그인 직후 한 번 호출한다.
+ */
+export function setUsers(list: { id: number; name: string }[]) {
+  users.length = 0;
+  for (const u of list) users.push({ id: String(u.id), name: u.name });
 }
 
 /** 활동(프로젝트·스터디). 구성원·팀장·목표·기간·진행 상태를 가진다. */
@@ -342,6 +341,15 @@ function publish(next: Model) {
   snapshot = next;
   listeners.forEach(fn => fn());
 }
+/**
+ * 서버에서 만든 자료를 스토어에 올린다(serverStore.loadModel 결과).
+ * localStorage 를 쓰지 않으므로 다른 탭과 공유되지 않고, 새로고침하면 서버에서 다시 받는다.
+ */
+export function publishModel(next: Model) {
+  loadWarning = '';
+  publish(next);
+}
+
 /** 저장소의 자료가 더 최신 revision 이면 다시 읽어 반영한다. */
 export function refresh() {
   const next = load();
@@ -593,8 +601,7 @@ export type ModalKind =
   | 'group-delete'
   | 'tag-delete'
   | 'document-pick'
-  | 'document-history'
-  | 'reset';
+  | 'document-history';
 /** 열린 대화상자와 대상 정보. date·start 는 새 일정·예약의 기본값으로 쓴다. */
 export interface ModalState {
   kind: ModalKind;

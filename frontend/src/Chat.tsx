@@ -2,23 +2,15 @@
 // 방 목록·메시지 검색·태그 필터 오버레이와 메시지의 회의록 인용 기능을 제공한다.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Room, Workspace } from './model';
-import {
-  canChat,
-  canReadChat,
-  id,
-  iso,
-  mutate,
-  name,
-  requireMember,
-  room,
-  same,
-  stamp,
-  url,
-  workspace,
-  writable
-} from './model';
+import { canReadChat, getSnapshot, name, publishModel, same, stamp, url, writable } from './model';
+import { sendMessage } from './api';
+import { toServerId } from './serverModel';
+import { loadMessages } from './serverStore';
 import { Icon, IconButton } from './ui';
 import type { ViewProps } from './ui';
+
+/** 새 메시지를 확인하는 주기(ms). 배포 환경(Vercel)은 WebSocket 을 지원하지 않아 폴링으로 받는다. */
+const POLL_MS = 4000;
 
 /** 활동별 채팅 사이드바. 방 선택, 메시지 전송, 읽음 기록, 스크롤 위치 유지를 맡는다. */
 export default function Chat({
@@ -37,6 +29,33 @@ export default function Chat({
   const r = rooms.find(r => same(r.id, p.chatRooms[String(w?.id)])) || rooms.at(-1);
   const rid = r?.id,
     readKey = `${s.userId}:${rid}`;
+
+  /**
+   * 현재 방의 메시지를 서버에서 받아 화면 자료에 채운다.
+   * 처음 열 때는 전체를, 그 뒤에는 마지막 메시지 이후의 새 메시지만 가져온다.
+   */
+  async function refreshMessages() {
+    if (!rid) return;
+    const current = getSnapshot();
+    const target = current.rooms.find(x => same(x.id, rid));
+    const last = target?.messages.at(-1)?.id;
+    publishModel(await loadMessages(current, toServerId(rid), last ? Number(last) : undefined));
+  }
+
+  // 방을 열면 메시지를 받아 오고, 열려 있는 동안 주기적으로 새 메시지를 확인한다.
+  useEffect(() => {
+    if (!rid) return;
+    let alive = true;
+    const tick = () => {
+      if (alive) void refreshMessages().catch(() => undefined);
+    };
+    tick();
+    const timer = window.setInterval(tick, POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [rid]);
 
   // 화면 상태: 열린 오버레이, 방 이름·메시지 검색어, 태그 필터, 방별 표시 개수, 새 메시지 버튼
   const [overlay, setOverlay] = useState<'rooms' | 'search' | 'tags' | null>(null);
@@ -117,22 +136,17 @@ export default function Chat({
     setPrefs({ chatRooms: { ...p.chatRooms, [next.workspaceId]: next.id } });
     setOverlay(null);
   }
-  // 메시지 전송. 최신 자료 기준으로 참여 권한을 다시 확인한 뒤 추가하고 입력 초안을 비움
-  function send(event: React.FormEvent<HTMLFormElement>) {
+  // 메시지 전송. 서버에 저장한 뒤 그 방의 메시지를 다시 받아 화면에 반영한다.
+  async function send(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!r) return;
     const text = (p.messageDrafts[readKey] || '').trim();
     try {
       if (!text) throw new Error('메시지를 입력해야 함');
       forceBottom.current = true;
-      mutate('메시지 전송', s, next => {
-        const target = room(next, r.id),
-          owner = workspace(next, target?.workspaceId);
-        requireMember(owner, s);
-        if (!canChat(target, owner, s)) throw new Error('참여 권한이 변경됨');
-        target!.messages.push({ id: id('msg'), authorId: s.userId, createdAt: iso(), text });
-      });
+      await sendMessage(toServerId(r.id), text);
       setPrefs({ messageDrafts: { ...p.messageDrafts, [readKey]: '' } });
+      await refreshMessages();
     } catch (error) {
       forceBottom.current = false;
       notify((error as Error).message);
@@ -284,7 +298,7 @@ export default function Chat({
               }}
             />
             <div className="composer-footer">
-              <small>{w?.status === '보관' ? '보관 · 조회 전용' : '로컬 데모 · Ctrl+Enter 전송'}</small>
+              <small>{w?.status === '보관' ? '보관 · 조회 전용' : 'Ctrl+Enter 전송'}</small>
               <button className="button primary small" disabled={!writable(w, s)}>
                 전송
               </button>

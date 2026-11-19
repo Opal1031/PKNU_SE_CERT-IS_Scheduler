@@ -175,6 +175,17 @@ export interface ApiWorkspace {
   myRole: MyRole;
 }
 
+/** 비로그인 화면에 공개하는 활동 정보. 구성원·기간 같은 내부 정보는 서버가 빼고 보낸다. */
+export interface ApiPublicWorkspace {
+  id: number;
+  type: WorkspaceType;
+  name: string;
+  initial: string;
+  field: string;
+  status: WorkspaceStatus;
+  goal: string;
+}
+
 /** 활동 목록 필터. 지정한 것끼리 AND 로 묶인다. */
 export interface WorkspaceFilter {
   scope?: 'mine' | 'all';
@@ -199,6 +210,8 @@ function query(params: Record<string, string | number | boolean | undefined | nu
 export const listWorkspaces = (filter: WorkspaceFilter = {}) =>
   request<ApiWorkspace[]>(`/api/workspaces${query({ ...filter })}`);
 export const getWorkspace = (id: number) => request<ApiWorkspace>(`/api/workspaces/${id}`);
+/** 진행 중인 활동 소개(로그인 없이 호출 가능). */
+export const listPublicWorkspaces = () => request<ApiPublicWorkspace[]>('/api/public/workspaces');
 
 export interface WorkspaceCreate {
   type: WorkspaceType;

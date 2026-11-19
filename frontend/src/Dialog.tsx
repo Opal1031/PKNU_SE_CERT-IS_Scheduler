@@ -1,24 +1,22 @@
 // 공용 모달 창. ModalState.kind에 따라 활동·일정·예약·방·태그·회의록 관련 창의 내용을 바꿔 그리고,
-// 제출은 화면 설정 저장, 샘플 초기화, 또는 model.ts의 applyForm으로 처리한다.
+// 제출은 화면 설정 저장이거나 serverStore.submitForm을 통한 서버 호출이다.
 import { useEffect, useId, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { ModalState, Workspace } from './model';
+import { submitForm } from './serverStore';
+import { updateRoom } from './api';
+import { toServerId } from './serverModel';
 import {
-  applyForm,
   bookingEditable,
   bookingStarts,
   bookingEnds,
   canView,
-  DRAFTS,
-  eventEditable,
+    eventEditable,
   fields,
   leader,
   member,
-  mutate,
-  name,
-  requireMember,
-  resetModel,
-  room,
+    name,
+      room,
   same,
   stamp,
   statuses,
@@ -28,8 +26,7 @@ import {
   url,
   users,
   workspace,
-  writable,
-  writeLocal
+  writable
 } from './model';
 import { Area, Checks, Empty, Field, Icon, IconButton, Select } from './ui';
 import type { ViewProps } from './ui';
@@ -97,6 +94,7 @@ export default function Dialog({
   setPrefs,
   open,
   notify,
+  reload,
   state,
   close,
   done
@@ -138,6 +136,7 @@ export default function Dialog({
   const [newLeader, setLeader] = useState(w?.leaderId || s.userId);
   // 오류 메시지와 활동 선택 창의 검색 상태·검색 결과
   const [error, setError] = useState(''),
+    [saving, setSaving] = useState(false),
     dialog = useRef<HTMLDialogElement>(null);
   const [searching, setSearching] = useState(false),
     [activityQuery, setActivityQuery] = useState('');
@@ -195,13 +194,13 @@ export default function Dialog({
     if (searching) activitySearch.current?.focus();
   }, [searching]);
 
-  // 폼 제출: 필터·정렬은 화면 설정에 저장, 초기화는 샘플 자료로 되돌리고 초안 삭제,
-  // 나머지는 applyForm으로 자료를 변경한다. 실패하면 창 안에 오류를 표시한다.
-  function submit(event: React.FormEvent<HTMLFormElement>) {
+  // 폼 제출: 필터·정렬은 화면 설정에 저장하고, 나머지는 서버에 반영한 뒤 자료를 다시 받는다.
+  // 실패하면 창 안에 오류를 표시한다.
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget),
       get = (key: string) => String(data.get(key) || '');
-    if (picking) return;
+    if (picking || saving) return;
     try {
       if (kind === 'list-filters')
         setPrefs({
@@ -214,36 +213,29 @@ export default function Dialog({
       else if (kind === 'calendar-filters')
         setPrefs({ calendarMine: data.has('mine'), calendarScope: get('scope') || 'mine' });
       else if (kind === 'room-sort') setPrefs({ roomSort: get('sort'), roomSortGroup: get('group') });
-      else if (kind === 'reset') {
-        resetModel();
-        writeLocal(DRAFTS, {});
-      } else {
-        const result = applyForm(state, data, s);
+      else {
+        // 서버에 반영한 뒤 자료를 다시 받는다. 서버가 최종 상태를 정하므로
+        // 응답을 화면에 끼워 넣기보다 다시 읽는 편이 어긋날 여지가 없다.
+        setSaving(true);
+        const result = await submitForm(state, data, s);
+        await reload();
+        setSaving(false);
         done(state, result);
         notify(kind === 'workspace-apply' ? '참가 신청을 보냈어요. 팀장 승인 후 참여할 수 있어요.' : '변경 적용됨');
         return;
       }
       done(state);
-      if (kind === 'reset') notify('샘플 초기화됨');
     } catch (err) {
+      setSaving(false);
       setError((err as Error).message);
     }
   }
-  // 태그 그룹(tagId가 없을 때) 또는 그룹 안 태그의 순서를 delta만큼 옮김
-  function reorder(groupId: string, tagId: string | undefined, delta: number) {
-    try {
-      mutate(tagId ? '태그 순서 변경' : '그룹 순서 변경', s, next => {
-        const owner = workspace(next, w?.id);
-        requireMember(owner, s);
-        const list = tagId ? next.tagGroups[owner.id].find(g => g.id === groupId)?.tags : next.tagGroups[owner.id];
-        if (!list) throw new Error('그룹을 찾을 수 없음');
-        const i = list.findIndex(x => x.id === (tagId || groupId)),
-          j = i + delta;
-        if (i >= 0 && j >= 0 && j < list.length) [list[i], list[j]] = [list[j], list[i]];
-      });
-    } catch (err) {
-      setError((err as Error).message);
-    }
+  /**
+   * 태그·그룹 순서 변경. 서버에 순서를 저장하는 API 가 아직 없어서, 화면에서만 바꾸면
+   * 새로고침할 때 되돌아간다. 사라질 변경을 보여 주는 대신 아직 안 된다고 알린다.
+   */
+  function reorder(_groupId: string, tagId: string | undefined, _delta: number) {
+    setError(`${tagId ? '태그' : '그룹'} 순서 변경은 아직 서버에 연결되지 않았어요.`);
   }
 
   // 모달 종류별 제목
@@ -274,8 +266,7 @@ export default function Dialog({
     'group-delete': '그룹 삭제',
     'tag-delete': '태그 삭제',
     'document-pick': '회의록 선택',
-    'document-history': '최근 저장 이력',
-    reset: '샘플 초기화'
+    'document-history': '최근 저장 이력'
   };
 
   // 모달 종류별 본문
@@ -724,11 +715,7 @@ export default function Dialog({
                           icon="history"
                           onClick={() => {
                             try {
-                              mutate('방 복원', s, next => {
-                                const target = room(next, r.id);
-                                requireMember(workspace(next, target?.workspaceId), s);
-                                if (target) target.archived = false;
-                              });
+                              void updateRoom(toServerId(r.id), { archived: false }).then(reload);
                             } catch (err) {
                               setError((err as Error).message);
                             }
@@ -877,7 +864,7 @@ export default function Dialog({
         </>
       );
       break;
-    // 안내 문구만 있는 확인 창: 활동 탈퇴, 일정 삭제, 방 보관, 샘플 초기화
+    // 안내 문구만 있는 확인 창: 활동 탈퇴, 일정 삭제, 방 보관
     case 'leave':
       body = <p>활동과 방 접근권을 잃지만 작성 기록은 유지됨. 팀장은 먼저 위임해야 함</p>;
       break;
@@ -886,9 +873,6 @@ export default function Dialog({
       break;
     case 'room-archive':
       body = <p>방 탐색에서 제외하며 대화와 회의록은 유지됨. 방 설정에서 복원 가능함</p>;
-      break;
-    case 'reset':
-      body = <p>활동·일정·예약·문서·초안의 현재 변경을 제거하고 샘플로 되돌림</p>;
       break;
   }
 

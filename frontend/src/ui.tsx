@@ -163,6 +163,8 @@ export interface ViewProps {
   setPrefs: (patch: Partial<Preferences>) => void;
   open: (modal: ModalState) => void;
   notify: (message: string) => void;
+  /** 서버에서 자료를 다시 받아 화면에 반영한다. 자료를 바꾼 뒤 호출한다. */
+  reload: () => Promise<void>;
 }
 // 한 줄 안의 **굵게**와 `인라인 코드` 표시를 요소로 바꾼다.
 function inline(text: string): ReactNode[] {
