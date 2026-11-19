@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.routes import admin, auth, documents, reservations, users, workspaces
+from app.api.routes import admin, auth, documents, events, reservations, users, workspaces
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.seed import ensure_initialized
@@ -51,8 +51,8 @@ def create_app() -> FastAPI:
         allow_headers=["Authorization", "Content-Type"],
     )
 
-    # 기능별 라우터 등록: 인증, 사용자, 임원진 계정 관리, 활동, 회의록, 동아리방 예약
-    for module in (auth, users, admin, workspaces, documents, reservations):
+    # 기능별 라우터 등록: 인증, 사용자, 임원진 계정 관리, 활동, 회의록, 동아리방 예약, 캘린더
+    for module in (auth, users, admin, workspaces, documents, reservations, events):
         app.include_router(module.router)
 
     @app.get("/api/health", tags=["시스템"], summary="서버·DB 상태 확인")
