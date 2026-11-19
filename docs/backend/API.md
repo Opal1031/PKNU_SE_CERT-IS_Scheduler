@@ -184,6 +184,35 @@ POST /api/reservations
 {"detail": "이미 예약된 시간이 포함되어 있음"}
 ```
 
+### 통합 캘린더
+
+일정과 동아리방 예약을 **한 번의 요청으로 함께** 돌려준다. 화면이 두 번 요청해 합치지 않아도 되게 하기 위함이다.
+
+| 메서드 | 경로 | 권한 | 설명 |
+|---|---|---|---|
+| GET | `/api/calendar?from=&to=&workspaceId=&mine=` | 로그인 | 기간에 걸치는 일정 + 그 기간의 확정 예약 |
+| POST | `/api/events` | 구성원 / club은 임원진 | 일정 등록 |
+| PATCH | `/api/events/{id}` | 〃 | 수정. 공개 범위·소속 활동은 변경 불가 |
+| DELETE | `/api/events/{id}` | 〃 | 소프트 삭제(`deleted_at` 기록) |
+
+**공개 범위(visibility)** — 보이는 사람과 고칠 수 있는 사람이 함께 결정된다.
+
+| 값 | 보이는 사람 | 고칠 수 있는 사람 | `workspaceId` |
+|---|---|---|---|
+| `club` | 누구나 | 임원진 | 반드시 `null` |
+| `workspace` | 그 활동 구성원 + 임원진 | 그 활동 구성원 | 필수 |
+| `private` | 담당자 본인만 | 그 활동 구성원 | 필수 |
+
+- `club`에 `workspaceId`를 넣거나, 나머지에서 빼면 **422**다.
+- `private` 일정의 담당자를 비우면 **등록자가 담당자가 된다**. 아무에게도 보이지 않는 일정이 생기지 않게 하기 위함이다.
+- 임원진은 활동 일정을 **보지만 고치지는 못한다**(`canEdit: false`). 회의록·대화와 달리 일정은 운영 조회 대상이다.
+
+**기간 판정** — 시작일이 `to` 이전이고 종료일이 `from` 이후인 일정을 모두 포함한다. 조회 기간을 **가로지르는** 일정도 걸린다.
+
+**삭제** — 행을 지우지 않고 `deleted_at`만 기록한다. 캘린더에서는 사라지되 무엇이 언제 지워졌는지는 남는다. 이미 삭제된 일정에 대한 수정·삭제는 404다.
+
+**예약 합본** — `확정` 상태만 포함한다(취소 건은 예약 화면에서 본다). 사용 목적은 예약 API와 같은 규칙으로 다른 팀에게 `null`로 가려진다.
+
 ```json
 {
   "id": 1, "type": "project", "name": "CERT-IS 통합 관리", "initial": "CI",
@@ -213,8 +242,6 @@ POST /api/reservations
 | 채팅 | GET | `/api/rooms/{roomId}/messages?before=&limit=50` | 방 구성원 | 이전 메시지 페이지 |
 | 채팅 | WS | `/ws/rooms/{roomId}?token=<accessToken>` | 방 구성원 | 실시간 송수신(FastAPI WebSocket) |
 | 태그 | GET/POST/PATCH/DELETE | `/api/workspaces/{id}/tag-groups…` | 구성원 | 그룹·태그 이름·순서 |
-| 캘린더 | GET | `/api/calendar?from=&to=&workspaceId=&mine=&scope=` | 로그인 | 일정 + 예약을 합쳐 반환 |
-| 캘린더 | POST/PATCH/DELETE | `/api/events[/{id}]` | 구성원 / 동아리 일정은 임원진 | 삭제는 `deleted_at` 기록 |
 | 6.x · AI | POST | `/api/ai/survey` | 로그인 | `{answers}` → `{scores, recommendation}` (OpenAI) |
 | 6.x · AI | GET | `/api/ai/survey/latest` | 로그인 | 마지막 결과 복원 |
 
