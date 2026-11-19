@@ -97,9 +97,7 @@ POST /api/auth/login
 - 승인 대기와 탈퇴·정지로 막은 계정은 모두 `isActive: false`라 화면에서 함께 "승인 대기·비활성"으로 표시한다.
 - 화면: 설정 → **계정 관리**(임원진에게만 보임). 모든 서버 계정은 설정 → **내 계정**에서 비밀번호를 바꾼다.
 
-### 활동 조회
-
-등록·수정·필터는 WBS 5.1(아래 설계)에서 같은 라우터에 추가한다.
+### 활동 (WBS 5.1)
 
 | 메서드 | 경로 | 권한 | 설명 |
 |---|---|---|---|
@@ -107,6 +105,29 @@ POST /api/auth/login
 | GET | `/api/workspaces?scope=mine` | 로그인 | 내가 참여한 활동 |
 | GET | `/api/workspaces?scope=all` | 임원진 | 전체 활동(일반부원은 403) |
 | GET | `/api/workspaces/{id}` | 구성원·임원진 | 활동 상세 |
+| POST | `/api/workspaces` | 로그인 | 활동 등록 → 201. 생성자가 최초 팀장, 기본 채팅방 `일반` 함께 생성 |
+| PATCH | `/api/workspaces/{id}` | 팀장 | 보낸 항목만 수정. 시작일 > 종료일이면 400 |
+| PUT | `/api/workspaces/{id}/members` | 팀장 | `{memberIds, leaderId}` 구성원 교체·팀장 위임 |
+| POST | `/api/workspaces/{id}/leave` | 팀원 | 활동 나가기 → 204. 팀장은 먼저 위임해야 함(400) |
+| POST | `/api/workspaces/{id}/applications` | 미참여 | 참가 신청 → 201. 종료·보관 활동 400, 중복 신청 409 |
+
+**목록 필터** — 모두 선택이며 지정한 것끼리 AND로 묶인다.
+
+```
+GET /api/workspaces?scope=mine&type=study&field=암호학&status=보류&leaderId=3&q=해킹&order=name
+```
+
+| 파라미터 | 값 | 설명 |
+|---|---|---|
+| `scope` | `mine`(기본) · `all` | `all`은 임원진 전용 |
+| `type` | `project` · `study` | |
+| `field` | 보안 분야 | 정확히 일치 |
+| `status` | `계획` `진행 중` `보류` `완료` `보관` | 정확히 일치 |
+| `leaderId` | 사용자 ID | 팀장 기준 |
+| `q` | 검색어 | 이름·목표 부분 일치. `%`·`_`는 글자 그대로 찾음 |
+| `order` | `id`(기본) · `name` · `updated` | `updated`는 최신순 |
+
+**구성원 변경 시 주의** — 명단에서 빠진 사람은 그 활동의 채팅방에서도 함께 빠진다. 남는 구성원의 가입 시각(`joined_at`)은 보존된다.
 
 ```json
 {
@@ -132,12 +153,6 @@ POST /api/auth/login
 
 | WBS · 담당 | 메서드 | 경로 | 권한 | 비고 |
 |---|---|---|---|---|
-| 5.1 · PM | GET | `/api/workspaces?type=&field=&status=&leaderId=&q=&order=` | 로그인 | 담당자·상태·보안 분야 필터 |
-| 5.1 · PM | POST | `/api/workspaces` | 로그인 | 생성자가 최초 팀장, 기본 채팅방 `일반` 함께 생성 |
-| 5.1 · PM | PATCH | `/api/workspaces/{id}` | 팀장 | 이름·분야·목표·기간·상태 |
-| 5.1 · PM | PUT | `/api/workspaces/{id}/members` | 팀장 | `{memberIds, leaderId}` 팀장 위임 포함 |
-| 5.1 · PM | POST | `/api/workspaces/{id}/leave` | 팀원 | 팀장은 먼저 위임해야 함(400) |
-| 5.1 · PM | POST | `/api/workspaces/{id}/applications` | 미참여 | 종료된 활동·중복 신청은 400/409 |
 | 5.3 · PM | GET | `/api/rooms/{roomId}/document` | 방 구성원 | `{body, version, updatedBy, updatedAt}` |
 | 5.3 · PM | PUT | `/api/rooms/{roomId}/document` | 방 구성원 | `{body, baseVersion}` — 최신 버전과 다르면 409 |
 | 5.3 · PM | GET | `/api/rooms/{roomId}/document/versions` | 방 구성원 | 최근 10개 |

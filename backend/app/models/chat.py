@@ -4,7 +4,7 @@ import datetime as dt
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Table, Text, UniqueConstraint
 from sqlalchemy.dialects.mysql import MEDIUMTEXT
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, BigId, CreatedAtMixin, utcnow
 
@@ -23,6 +23,15 @@ class ChatRoom(CreatedAtMixin, Base):
     archived: Mapped[bool] = mapped_column(Boolean, default=False)  # 보관: 목록에서 숨기고 전송 차단
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
+    members: Mapped[list["ChatRoomMember"]] = relationship(
+        back_populates="room", cascade="all, delete-orphan", order_by="ChatRoomMember.user_id"
+    )
+
+    @property
+    def member_ids(self) -> list[int]:
+        """방 참여자 ID 목록. 채팅 열람·전송 권한 판단(permissions)에 쓴다."""
+        return [m.user_id for m in self.members]
+
 
 class ChatRoomMember(Base):
     """채팅방 참여자와 그 사람이 마지막으로 읽은 메시지 위치."""
@@ -32,6 +41,8 @@ class ChatRoomMember(Base):
     room_id: Mapped[int] = mapped_column(ForeignKey("chat_rooms.id", ondelete="CASCADE"), primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     last_read_message_id: Mapped[int | None] = mapped_column(BigId)  # 미확인 메시지 표시용
+
+    room: Mapped[ChatRoom] = relationship(back_populates="members")
 
 
 class Message(CreatedAtMixin, Base):
