@@ -169,7 +169,7 @@ erDiagram
         int user_id FK
         json answers
         json scores
-        text recommendation "Gemini 응답"
+        text recommendation "OpenAI 응답"
         datetime created_at
     }
     audit_logs {

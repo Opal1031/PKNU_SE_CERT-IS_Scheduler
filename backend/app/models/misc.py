@@ -9,7 +9,7 @@ from app.db.base import Base, BigId, CreatedAtMixin
 
 
 class SurveyResult(CreatedAtMixin, Base):
-    """15문항 응답, 분야별 점수, Gemini 추천 문장을 함께 보관한다(AI 담당 기능)."""
+    """15문항 응답, 분야별 점수, OpenAI 추천 문장을 함께 보관한다(AI 담당 기능)."""
 
     __tablename__ = "survey_results"
 
