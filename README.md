@@ -35,7 +35,7 @@ CERT-IS는 공지는 카카오톡, 스터디·프로젝트는 Notion으로 나�
 | AI 보안 분야 추천 | 15문항 진단 응답을 OpenAI API로 분석해 분야·학습 방향 제시 | 설문·점수 계산 화면 완료 | OpenAI 연동 예정 |
 | 동아리방 예약 | 30분 단위 예약, 중복 자동 차단, 예약 현황판 | 화면 완료 | ✅ 완료 |
 | 통합 캘린더 | 동아리·프로젝트 일정과 동아리방 예약 현황 | 화면 완료 | ✅ 완료 |
-| 팀 채팅 | 프로젝트·스터디 채팅방, 실시간 메시지 송수신 | 화면 완료 | ✅ 완료 (배포 환경 WebSocket 확인 필요) |
+| 팀 채팅 | 프로젝트·스터디 채팅방, 실시간 메시지 송수신 | 화면 완료 | ✅ 완료 (배포 환경은 폴링, WebSocket은 로컬 전용) |
 
 ## 프로젝트 범위
 
@@ -144,7 +144,7 @@ gantt
 | 구분 | 사용 기술 |
 |---|---|
 | 프론트엔드 | React, TypeScript, Tailwind CSS, Vite |
-| 백엔드 | Python, FastAPI (REST · WebSocket), SQLAlchemy |
+| 백엔드 | Python, FastAPI (REST · WebSocket은 로컬 전용), SQLAlchemy |
 | DB | MySQL 8.0 |
 | 인증 | JWT |
 | AI | OpenAI API |
@@ -154,7 +154,7 @@ gantt
 flowchart LR
     U["브라우저<br/>임원진 · 일반부원"] --> FE["프론트엔드<br/>React + TypeScript"]
     FE -- "REST API<br/>JWT" --> BE["백엔드<br/>FastAPI"]
-    FE -. "WebSocket<br/>팀 채팅" .-> BE
+    FE -. "폴링<br/>팀 채팅" .-> BE
     BE --> DB[("MySQL 8.0")]
     BE --> AI["OpenAI API"]
     GH["GitHub Actions<br/>CI"] -. "테스트 · 빌드" .-> BE
