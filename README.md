@@ -107,7 +107,7 @@ gantt
 | 1.4 | 요구사항 정의 | PM | 5–6 | 🔄 진행 중 | 요구사항 명세서 |
 | 2.1 | DB 설계 (ERD) | BE | 6–7 | ✅ 완료 | [ERD](docs/backend/ERD.md) |
 | 2.2 | API 명세 설계 | BE | 6–7 | ✅ 완료 | [API 명세](docs/backend/API.md) |
-| 2.3 | 화면 설계 (와이어프레임) | FE | 6–7 | ✅ 완료 | [화면별 작업트리](docs/frontend/화면별_작업트리.md) |
+| 2.3 | 화면 설계 (와이어프레임) | FE | 6–7 | ✅ 완료 | [와이어프레임](docs/frontend/wireframes/), [화면별 작업트리](docs/frontend/화면별_작업트리.md) |
 | 3.1 | GitHub 레포·브랜치 전략 | BE | 6 | ✅ 완료 | [협업 규칙](CONTRIBUTING.md), 이슈·PR 템플릿, 라벨 |
 | 3.2 | Docker·GitHub Actions CI/CD | BE | 7–8 | 🔄 진행 중 | CI 완료, Vercel 자동 배포(프론트·백엔드), Aiven MySQL |
 | 4.1 | 로그인·권한 관리 | BE | 7–8 | ✅ 완료 | 회원가입(임원진 승인)·로그인·로그인 만료, 비밀번호 변경, 임원진 계정 발급·아이디·역할·비활성화·비밀번호 초기화 |
@@ -168,7 +168,7 @@ flowchart LR
 ├─ frontend/             React 앱 (화면·로컬 데모 데이터·운영 규칙 테스트)
 ├─ backend/              FastAPI 서버 (인증·권한·모델·테스트)
 ├─ docs/
-│  ├─ frontend/          화면 설계 기록, 화면별 작업트리, 화면 캡처
+│  ├─ frontend/          화면 설계 기록, 화면별 작업트리, 와이어프레임
 │  ├─ backend/           ERD, API 명세
 │  └─ recommend/         AI 설문 문항·분야 가중치
 ├─ assets/               로고
@@ -229,6 +229,7 @@ pnpm dev
 | [docs/backend/API.md](docs/backend/API.md) | API 목록, 권한표, 요청·응답 예시 |
 | [docs/frontend/화면별_작업트리.md](docs/frontend/화면별_작업트리.md) | 화면 구성과 구현 범위 |
 | [docs/frontend/CERT-IS_통합_관리_시스템_상세_설계_기록.md](docs/frontend/CERT-IS_통합_관리_시스템_상세_설계_기록.md) | 화면·기능 상세 설계 기록 |
+| [docs/frontend/wireframes/](docs/frontend/wireframes/) | 화면 와이어프레임 12종과 생성 스크립트 |
 | [docs/recommend/architecture.md](docs/recommend/architecture.md) | AI 설문 문항과 분야 가중치 |
 
 ## 라이선스
