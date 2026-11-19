@@ -213,6 +213,30 @@ POST /api/reservations
 
 **예약 합본** — `확정` 상태만 포함한다(취소 건은 예약 화면에서 본다). 사용 목적은 예약 API와 같은 규칙으로 다른 팀에게 `null`로 가려진다.
 
+### 채팅 · 태그
+
+방은 활동에 속하고, 참여자는 **활동 구성원 중에서 따로 고른다**. 회의록이 방에 1:1로 붙으므로 방을 나누면 회의별 회의록이 생긴다.
+
+| 메서드 | 경로 | 권한 | 설명 |
+|---|---|---|---|
+| GET | `/api/workspaces/{id}/rooms?includeArchived=` | 구성원 | **내가 참여한** 방만 |
+| POST | `/api/workspaces/{id}/rooms` | 구성원 | 생성. 참여자 비우면 구성원 전원 |
+| PATCH | `/api/rooms/{roomId}` | 방 구성원 | 이름·참여자·태그·보관 |
+| GET | `/api/rooms/{roomId}/messages?before=&after=&limit=` | 방 구성원 | 항상 오래된 것부터 |
+| POST | `/api/rooms/{roomId}/messages` | 방 구성원 | 전송 |
+| WS | `/ws/rooms/{roomId}?token=` | 방 구성원 | 실시간 송수신 |
+| GET/POST | `/api/workspaces/{id}/tag-groups` | 구성원 | 태그 그룹 |
+| POST | `/api/tag-groups/{groupId}/tags` | 구성원 | 태그 추가 |
+| DELETE | `/api/tags/{tagId}` | 구성원 | 태그 삭제 |
+
+**열람 범위** — 활동 구성원이라도 **초대되지 않은 방은 목록에도 안 나온다**. 임원진의 운영 조회 권한도 대화 내용까지는 넓히지 않아, 방 밖의 임원진은 403이다.
+
+**`before` / `after`** — `before`는 과거로 거슬러 올라갈 때, `after`는 새 메시지를 가져올 때 쓴다. **`after`만으로 폴링해도 대화를 따라갈 수 있다.**
+
+**WebSocket의 한계** — 브라우저 WebSocket은 헤더를 붙일 수 없어 토큰을 쿼리로 받는다. 연결은 한 프로세스 안에서만 공유되므로, **여러 인스턴스로 배포되면 다른 인스턴스에 붙은 사람에게 전달되지 않는다.** Vercel 서버리스가 이 경우에 해당할 수 있어, 그런 환경에서는 `GET /messages?after=` 폴링으로 동작하도록 REST 전송 API를 함께 두었다. 배포 환경에서 WebSocket이 동작하는지는 별도 확인이 필요하다.
+
+**보관된 방** — 목록에서 숨고 전송이 막히지만, 보관을 되돌릴 수 있어야 하므로 `PATCH`는 열려 있다.
+
 ```json
 {
   "id": 1, "type": "project", "name": "CERT-IS 통합 관리", "initial": "CI",
@@ -237,11 +261,6 @@ POST /api/reservations
 
 | WBS · 담당 | 메서드 | 경로 | 권한 | 비고 |
 |---|---|---|---|---|
-| 채팅 | GET/POST | `/api/workspaces/{id}/rooms` | 구성원 | 방 목록·생성(참여자·태그 지정) |
-| 채팅 | PATCH | `/api/rooms/{roomId}` | 구성원 | 이름·참여자·태그·보관 |
-| 채팅 | GET | `/api/rooms/{roomId}/messages?before=&limit=50` | 방 구성원 | 이전 메시지 페이지 |
-| 채팅 | WS | `/ws/rooms/{roomId}?token=<accessToken>` | 방 구성원 | 실시간 송수신(FastAPI WebSocket) |
-| 태그 | GET/POST/PATCH/DELETE | `/api/workspaces/{id}/tag-groups…` | 구성원 | 그룹·태그 이름·순서 |
 | 6.x · AI | POST | `/api/ai/survey` | 로그인 | `{answers}` → `{scores, recommendation}` (OpenAI) |
 | 6.x · AI | GET | `/api/ai/survey/latest` | 로그인 | 마지막 결과 복원 |
 
