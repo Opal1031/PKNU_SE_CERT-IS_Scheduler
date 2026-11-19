@@ -15,14 +15,16 @@ import {
   expireSession,
   fetchMe,
   getToken,
+  listUsers,
   login as apiLogin,
   logout as apiLogout,
   SESSION_EXPIRED,
   signup as apiSignup,
   tokenExpiresAt
 } from './api';
+import { emptyModel, loadModel, loadPublicWorkspaces } from './serverStore';
 import type { ApiError, ApiUser } from './api';
-import type { ModalState, Room } from './model';
+import type { ModalState, Room, Workspace } from './model';
 import {
   canView,
   getDraft,
@@ -30,12 +32,13 @@ import {
   iso,
   loadPreferences,
   loadWarning,
-  localUserId,
   member,
   role,
+  publishModel,
   room,
   same,
   setDraft,
+  setUsers,
   subscribe,
   UI_STORE,
   url,
@@ -72,6 +75,11 @@ export default function App() {
   const [modal, open] = useState<ModalState | null>(null),
     [toast, setToast] = useState(''),
     [quoteSignal, quoted] = useState(0);
+  // 서버 자료를 받는 중인지, 받지 못했다면 그 이유
+  const [loadingData, setLoadingData] = useState(false),
+    [dataError, setDataError] = useState('');
+  // 비로그인 소개 화면에 보여 줄 진행 중인 활동(공개 API)
+  const [guestActivities, setGuestActivities] = useState<Workspace[]>([]);
   // 본문 요소, 직전 활동 ID, 알림 타이머, 채팅 너비 드래그 시작점
   const main = useRef<HTMLElement>(null),
     lastWorkspace = useRef<string | undefined>(undefined),
@@ -146,6 +154,18 @@ export default function App() {
     if (loggedIn && (route.page === 'login' || route.page === 'signup')) location.hash = '#/dashboard';
   }, [loggedIn, route.page]);
 
+  // 자료는 모두 서버에서 받는다. 브라우저에 남아 있던 예전 자료가 잠깐이라도 보이지 않도록
+  // 첫 렌더링 직후 화면을 비우고 시작한다. 로그인하면 reload 가 서버 자료로 채운다.
+  useEffect(() => {
+    publishModel(emptyModel());
+  }, []);
+  // 비로그인 상태에서는 공개 API 로 진행 중인 활동만 받아 소개 화면에 보여 준다.
+  useEffect(() => {
+    if (checking || loggedIn) return;
+    loadPublicWorkspaces()
+      .then(setGuestActivities)
+      .catch(() => setGuestActivities([]));
+  }, [checking, loggedIn]);
   // 로그인 상태 복원과 세션 만료 처리
   useEffect(() => {
     if (!checking) return;
@@ -164,6 +184,7 @@ export default function App() {
     const expired = () => {
       setAccount(null);
       setLoggedIn(false);
+      publishModel(emptyModel());
       open(null);
       lastWorkspace.current = undefined;
       setPrefs({ officer: false });
@@ -181,12 +202,36 @@ export default function App() {
     return () => clearTimeout(timeout);
   }, [account]);
 
-  // 서버 계정으로 로그인 상태를 만들고 로컬 사용자 ID·임원진 여부를 설정에 반영
+  // 서버 계정으로 로그인 상태를 만든다. 세션 사용자 ID 는 서버 계정 ID(문자열)이고,
+  // 화면이 이름을 찾을 수 있도록 사용자 목록도 서버에서 받아 둔다.
   function enter(user: ApiUser) {
     setAccount(user);
-    setPrefs({ userId: localUserId(user), officer: user.officer, scope: 'mine' });
+    setPrefs({ userId: String(user.id), officer: user.officer, scope: 'mine' });
     setLoggedIn(true);
+    void reload(true);
   }
+
+  /**
+   * 서버에서 자료를 다시 받아 화면에 반영한다. 자료 변경 뒤에도 호출한다.
+   * withUsers 를 주면 사용자 목록부터 새로 받는다(로그인 직후).
+   */
+  const reload = useCallback(
+    async (withUsers = false) => {
+      setLoadingData(true);
+      try {
+        if (withUsers) setUsers(await listUsers());
+        publishModel(await loadModel());
+        setDataError('');
+      } catch (error) {
+        const message = (error as ApiError).message;
+        // 401 은 세션 만료 처리가 따로 안내하므로 여기서 다시 알리지 않는다.
+        if ((error as ApiError).status !== 401) setDataError(message);
+      } finally {
+        setLoadingData(false);
+      }
+    },
+    []
+  );
   // 임원진이 자기 계정 정보를 바꾸면 서버 값으로 다시 맞춘다.
   const refreshAccount = () => {
     fetchMe()
@@ -212,6 +257,9 @@ export default function App() {
     apiLogout();
     setAccount(null);
     setLoggedIn(false);
+    // 받아 둔 자료를 비운다. 다음에 로그인한 사람에게 이전 사용자의 활동이 보이면 안 된다.
+    publishModel(emptyModel());
+    setDataError('');
     open(null);
     lastWorkspace.current = undefined;
     setPrefs({ officer: false });
@@ -220,7 +268,7 @@ export default function App() {
   }
 
   // 페이지·채팅·대화상자에 공통으로 넘기는 props
-  const common = { model, session, prefs, setPrefs, open: (state: ModalState) => open(state), notify };
+  const common = { model, session, prefs, setPrefs, open: (state: ModalState) => open(state), notify, reload };
   // 채팅 내용을 회의록 초안 끝에 '대화 인용'으로 붙이고 회의록 화면으로 이동
   function quote(r: Room, text: string) {
     try {
@@ -237,15 +285,11 @@ export default function App() {
       notify((error as Error).message);
     }
   }
-  // 대화상자 작업을 마친 뒤: 활동 생성·탈퇴·초기화는 페이지 이동, 태그 작업 후에는 태그 관리 창을 다시 연다.
+  // 대화상자 작업을 마친 뒤: 활동 생성·탈퇴는 페이지 이동, 태그 작업 후에는 태그 관리 창을 다시 연다.
   function completed(state: ModalState, result?: string | number) {
     open(null);
     if (state.kind === 'workspace-new' && result) location.hash = url(workspace(getSnapshot(), result)!);
-    if (state.kind === 'leave' || state.kind === 'reset') location.hash = '#/dashboard';
-    if (state.kind === 'reset') {
-      setPrefs({ chatWorkspaceId: 1, chatRooms: {}, reads: {}, messageDrafts: {} });
-      quoted(n => n + 1);
-    }
+    if (state.kind === 'leave') location.hash = '#/dashboard';
     if (['group-new', 'group-rename', 'tag-new', 'tag-rename', 'group-delete', 'tag-delete'].includes(state.kind))
       open({ kind: 'tags', workspaceId: state.workspaceId });
   }
@@ -271,7 +315,7 @@ export default function App() {
     // 비로그인: 홈·활동 목록·회원가입 외의 주소는 로그인 페이지로
     if (!route.workspaceId && route.page === 'dashboard') page = <GuestHome />;
     else if (!route.workspaceId && route.page === 'activities')
-      page = <GuestActivities activities={model.workspaces} />;
+      page = <GuestActivities activities={guestActivities} />;
     else if (!route.workspaceId && route.page === 'signup') page = <SignupPage signUp={signUp} />;
     else page = <LoginPage restricted={route.page !== 'login'} signIn={signIn} />;
   } else if (route.workspaceId) {
@@ -554,6 +598,19 @@ export default function App() {
             >
               <div className="page">
                 {loggedIn && loadWarning && <p className="form-error">{loadWarning}</p>}
+                {loggedIn && dataError && (
+                  <p className="form-error">
+                    서버에서 자료를 받지 못했어요. {dataError}{' '}
+                    <button type="button" className="link-button" onClick={() => void reload()}>
+                      다시 시도
+                    </button>
+                  </p>
+                )}
+                {loggedIn && loadingData && !dataError && (
+                  <p className="muted" role="status" aria-live="polite">
+                    자료를 불러오는 중…
+                  </p>
+                )}
                 {page}
               </div>
             </main>

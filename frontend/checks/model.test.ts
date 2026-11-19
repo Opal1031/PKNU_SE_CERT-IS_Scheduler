@@ -17,7 +17,7 @@ import {
   leader,
   loadPreferences,
   loadWarning,
-  localUserId,
+  name,
   member,
   minutes,
   mutate,
@@ -29,6 +29,8 @@ import {
   STORE,
   UI_STORE,
   uid,
+  users,
+  setUsers,
   updateMembers,
   visibleEvents,
   workspace
@@ -533,13 +535,22 @@ test('D-day sorts unfinished deadlines and respects membership and private event
   );
 });
 
-test('server accounts map to local sample users until activity APIs are connected', () => {
-  assert.equal(localUserId({ username: 'demo', name: '데모 사용자' }), 'me');
-  assert.equal(localUserId({ username: 'minseo', name: '민서' }), 'minseo');
-  assert.equal(localUserId({ username: 'kitae', name: '기태' }), 'gitae');
-  assert.equal(localUserId({ username: 'hyerim', name: '혜림' }), 'hyelim');
-  assert.equal(uid('admin'), undefined);
-  assert.equal(localUserId({ username: 'admin', name: '운영진' }), 'admin');
-  assert.equal(uid('admin'), 'admin');
-  assert.equal(member(workspace(getSnapshot(), 1), 'admin'), false);
+test('setUsers replaces the display name table with server accounts', () => {
+  const original = users.map(u => ({ ...u }));
+  setUsers([
+    { id: 3, name: '민서' },
+    { id: 7, name: '기태' }
+  ]);
+  assert.deepEqual(
+    users.map(u => u.id),
+    ['3', '7']
+  );
+  // 서버 ID 는 문자열로 보관하고, 목록에 없는 ID 는 uid 가 가려낸다.
+  assert.equal(name('3'), '민서');
+  assert.equal(uid('7'), '7');
+  assert.equal(uid('me'), undefined);
+  // 다른 테스트가 샘플 사용자 목록을 쓰므로 되돌려 놓는다.
+  users.length = 0;
+  users.push(...original);
+  assert.equal(name('me'), '나');
 });

@@ -14,6 +14,7 @@ import type {
   ApiDocumentVersion,
   ApiEvent,
   ApiMessage,
+  ApiPublicWorkspace,
   ApiReservation,
   ApiRoom,
   ApiTagGroup,
@@ -69,6 +70,28 @@ export function toWorkspace(w: ApiWorkspace): Workspace {
     startDate: w.startDate ?? '',
     endDate: w.endDate ?? '',
     updatedAt: w.updatedAt
+  };
+}
+
+/**
+ * 비로그인 화면용 활동. 서버가 공개하지 않는 구성원·기간·팀장은 빈 값으로 둔다.
+ * 로그인 화면과 같은 카드 컴포넌트를 쓰기 위해 Workspace 모양을 맞춘다.
+ */
+export function toPublicWorkspace(w: ApiPublicWorkspace): Workspace {
+  return {
+    id: w.id,
+    name: w.name,
+    type: w.type,
+    initial: w.initial,
+    field: w.field,
+    status: w.status,
+    memberIds: [],
+    leaderId: '',
+    createdBy: '',
+    goal: w.goal,
+    startDate: '',
+    endDate: '',
+    updatedAt: ''
   };
 }
 

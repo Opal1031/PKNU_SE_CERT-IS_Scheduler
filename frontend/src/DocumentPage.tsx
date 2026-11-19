@@ -2,7 +2,11 @@
 // 초안은 저장본과 따로 브라우저에 보관해 버전이 어긋나면 비교 후 고르게 한다.
 import { useEffect, useState } from 'react';
 import type { Room } from './model';
-import { getDraft, iso, saveDocument, setDraft, stamp, name, workspace, writable } from './model';
+import { getDraft, getSnapshot, iso, publishModel, setDraft, stamp, name, workspace, writable } from './model';
+import { saveDocument } from './api';
+import { DocumentConflictError } from './api';
+import { toServerId } from './serverModel';
+import { loadDocument } from './serverStore';
 import { Empty, IconButton, Markdown } from './ui';
 import type { ViewProps } from './ui';
 
@@ -62,17 +66,32 @@ export default function DocumentPage({
     updateDraft(undefined);
     setDialog(null);
   }
-  // 초안을 시작한 버전 기준으로 저장. 실패하면 알리고, 초안이 있으면 비교 창을 연다.
-  function save() {
+  // 초안을 시작한 버전 기준으로 서버에 저장. 그 사이 누가 먼저 저장했으면 409 로 거부되며,
+  // 서버가 최신 내용을 함께 주므로 화면을 갱신하고 비교 창을 열어 사용자가 합칠 수 있게 한다.
+  async function save() {
     try {
-      saveDocument(r.id, body, draft?.baseVersion ?? meta.version, s);
+      await saveDocument(toServerId(r.id), body, draft?.baseVersion ?? meta.version);
+      publishModel(await loadDocument(getSnapshot(), toServerId(r.id)));
       clear();
       notify('회의록 저장됨');
     } catch (error) {
+      if (error instanceof DocumentConflictError) {
+        publishModel(await loadDocument(getSnapshot(), toServerId(r.id)));
+        notify(error.message);
+        if (draft) setDialog('compare');
+        return;
+      }
       notify((error as Error).message);
       if (draft) setDialog('compare');
     }
   }
+
+  // 회의록 화면을 열면 서버에서 본문과 버전 이력을 받아 온다.
+  useEffect(() => {
+    void loadDocument(getSnapshot(), toServerId(r.id))
+      .then(publishModel)
+      .catch((error: Error) => notify(error.message));
+  }, [r.id]);
   // 현재 본문(읽기 전용이면 저장본)을 .md 파일로 내려받기
   function exportFile() {
     const link = document.createElement('a'),
