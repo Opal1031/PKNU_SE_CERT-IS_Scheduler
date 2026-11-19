@@ -129,6 +129,34 @@ GET /api/workspaces?scope=mine&type=study&field=암호학&status=보류&leaderId
 
 **구성원 변경 시 주의** — 명단에서 빠진 사람은 그 활동의 채팅방에서도 함께 빠진다. 남는 구성원의 가입 시각(`joined_at`)은 보존된다.
 
+### 회의록 (WBS 5.3)
+
+회의록은 채팅방과 1:1이라 별도 식별자 없이 `roomId`로 접근한다. 열람 권한은 **그 방에 참여한 활동 구성원**이며, 임원진이라도 방에 없으면 403이다(운영 조회 권한을 대화·회의록 내용까지 넓히지 않는다).
+
+| 메서드 | 경로 | 권한 | 설명 |
+|---|---|---|---|
+| GET | `/api/rooms/{roomId}/document` | 방 구성원 | 불러오기. 한 번도 저장 안 한 방이면 빈 회의록(version 1)을 만들어 돌려줌 |
+| PUT | `/api/rooms/{roomId}/document` | 방 구성원 | 저장. `{body, baseVersion}` — 최신 버전과 다르면 409 |
+| GET | `/api/rooms/{roomId}/document/versions` | 방 구성원 | 버전 이력 최근 10개(최신순) |
+
+**동시 편집 처리(낙관적 잠금)** — 불러올 때 받은 `version`을 저장할 때 `baseVersion`으로 돌려보낸다. 그 사이 다른 사람이 저장했으면 **저장하지 않고 409**를 주며, 이때 현재 내용을 함께 돌려주어 화면이 비교·병합할 수 있게 한다.
+
+```http
+PUT /api/rooms/1/document
+{"body": "## 11/19 회의", "baseVersion": 1}
+
+409 Conflict
+{
+  "detail": "다른 사람이 먼저 저장함. 최신 내용을 확인하고 다시 저장해야 함",
+  "currentVersion": 2,
+  "currentBody": "## 앨리스가 먼저 쓴 내용",
+  "updatedBy": 3,
+  "updatedAt": "2026-11-19T05:40:00Z"
+}
+```
+
+**버전 이력의 의미** — 이력 한 건은 *그 버전으로 저장되기 직전의 본문*이다. 빈 회의록에서 시작해 두 번 저장하면 이력에는 `v1`(빈 내용), `v2`(첫 저장 내용)가 남고 현재는 `v3`이다. 되돌리기는 이력의 `body`를 현재 `version`을 `baseVersion`으로 삼아 다시 저장하면 된다.
+
 ```json
 {
   "id": 1, "type": "project", "name": "CERT-IS 통합 관리", "initial": "CI",
@@ -153,9 +181,6 @@ GET /api/workspaces?scope=mine&type=study&field=암호학&status=보류&leaderId
 
 | WBS · 담당 | 메서드 | 경로 | 권한 | 비고 |
 |---|---|---|---|---|
-| 5.3 · PM | GET | `/api/rooms/{roomId}/document` | 방 구성원 | `{body, version, updatedBy, updatedAt}` |
-| 5.3 · PM | PUT | `/api/rooms/{roomId}/document` | 방 구성원 | `{body, baseVersion}` — 최신 버전과 다르면 409 |
-| 5.3 · PM | GET | `/api/rooms/{roomId}/document/versions` | 방 구성원 | 최근 10개 |
 | 채팅 | GET/POST | `/api/workspaces/{id}/rooms` | 구성원 | 방 목록·생성(참여자·태그 지정) |
 | 채팅 | PATCH | `/api/rooms/{roomId}` | 구성원 | 이름·참여자·태그·보관 |
 | 채팅 | GET | `/api/rooms/{roomId}/messages?before=&limit=50` | 방 구성원 | 이전 메시지 페이지 |

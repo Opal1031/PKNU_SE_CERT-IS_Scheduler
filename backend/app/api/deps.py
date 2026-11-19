@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core import permissions as perm
 from app.core.security import decode_access_token
 from app.db.session import get_db
-from app.models import User, Workspace
+from app.models import ChatRoom, User, Workspace
 
 # Swagger(/docs)의 Authorize 버튼에 토큰을 붙여 넣어 테스트할 수 있다.
 bearer = HTTPBearer(auto_error=False, description="POST /api/auth/login 응답의 accessToken")
@@ -110,3 +110,32 @@ def leader_workspace(workspace_id: int, db: DB, user: CurrentUser) -> Workspace:
 ViewableWorkspace = Annotated[Workspace, Depends(viewable_workspace)]
 WritableWorkspace = Annotated[Workspace, Depends(writable_workspace)]
 LeaderWorkspace = Annotated[Workspace, Depends(leader_workspace)]
+
+
+def load_room(db: Session, room_id: int) -> tuple[ChatRoom, Workspace]:
+    """채팅방과 그 방이 속한 활동을 함께 불러온다. 없으면 404."""
+    room = db.scalar(select(ChatRoom).where(ChatRoom.id == room_id).options(selectinload(ChatRoom.members)))
+    if room is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="채팅방을 찾을 수 없음")
+    return room, load_workspace(db, room.workspace_id)
+
+
+def readable_room(room_id: int, db: DB, user: CurrentUser) -> ChatRoom:
+    """회의록·대화를 볼 수 있을 때만 방을 넘겨준다(방에 초대된 활동 구성원)."""
+    room, ws = load_room(db, room_id)
+    if not perm.can_read_chat(room.archived, room.member_ids, ws, user):
+        raise forbidden("이 방에 참여한 활동 구성원만 볼 수 있음")
+    return room
+
+
+def writable_room(room_id: int, db: DB, user: CurrentUser) -> ChatRoom:
+    """회의록 저장·메시지 전송 권한이 있을 때만 방을 넘겨준다(보관된 활동은 조회 전용)."""
+    room, ws = load_room(db, room_id)
+    if not perm.can_send_chat(room.archived, room.member_ids, ws, user):
+        raise forbidden("보관된 방·활동이거나 참여하지 않은 방임")
+    return room
+
+
+# 라우트에서 room_id로 방을 불러오면서 권한까지 검사하는 의존성 타입
+ReadableRoom = Annotated[ChatRoom, Depends(readable_room)]
+WritableRoom = Annotated[ChatRoom, Depends(writable_room)]
