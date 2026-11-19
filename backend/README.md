@@ -97,7 +97,7 @@ backend/app
 | `APP_ENV` | `production` |
 | `SEED_PASSWORD` | (선택) 샘플 계정 비밀번호. 지정하지 않으면 `certis1234!` |
 
-- 빌드할 때 `pyproject.toml`의 `[tool.vercel.scripts] build`(`python -m app.seed`)가 테이블과 샘플 계정을 만든다. 이미 있으면 건너뛰므로 배포할 때마다 실행해도 안전하다.
+- 배포 빌드는 DB에 접속하지 않는다. 테이블·샘플 계정은 서버 기동 시 `app.seed.ensure_initialized()`가 한 번 만들고, 실패하면(= DB가 꺼져 있으면) 조용히 건너뛴 뒤 다음 요청에서 다시 시도한다. Aiven 무료 플랜은 한동안 쓰지 않으면 꺼지므로, 다시 켜고 `/api/health`를 한 번 호출하면 복구된다.
 - Vercel은 `pyproject.toml`의 `dependencies`로 패키지를 설치한다. `requirements.txt`를 바꾸면 이 목록도 같이 바꾼다(`tests/test_config.py`가 두 목록이 같은지 확인).
 - 미리보기(PR) 배포도 같은 DB를 사용한다.
 - Aiven 무료 플랜은 오래 쓰지 않으면 꺼질 수 있다. 이때 API가 500 오류를 내므로 Aiven 콘솔에서 서비스를 다시 켠다.

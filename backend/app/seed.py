@@ -8,6 +8,7 @@
 import os
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -82,6 +83,31 @@ def seed(db: Session, password: str = DEFAULT_PASSWORD) -> bool:
         ws.memberships = [WorkspaceMember(user_id=users[m].id) for m in members]
         db.add(ws)
     db.commit()
+    return True
+
+
+_initialized = False
+
+
+def ensure_initialized() -> bool:
+    """테이블이 없으면 만들고 샘플을 한 번 넣는다. 성공하면 True.
+
+    배포 빌드가 아니라 서버가 처음 DB를 쓸 때 호출한다. DB가 꺼져 있어도 배포가
+    실패하지 않도록, 접속에 실패하면 예외를 올리지 않고 False를 돌려준다.
+    (Aiven 무료 플랜은 한동안 쓰지 않으면 꺼지므로, 다시 켠 뒤 첫 요청에서 복구된다.)
+    """
+    global _initialized
+    if _initialized:
+        return True
+    try:
+        Base.metadata.create_all(engine)
+        with SessionLocal() as db:
+            seed(db, os.getenv("SEED_PASSWORD", DEFAULT_PASSWORD))
+    except SQLAlchemyError as error:
+        # DB가 꺼져 있거나 주소가 틀린 경우. 다음 요청에서 다시 시도한다.
+        print(f"[seed] DB 초기화를 건너뜀: {type(error).__name__}")
+        return False
+    _initialized = True
     return True
 
 

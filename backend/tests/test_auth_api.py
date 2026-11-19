@@ -4,7 +4,26 @@ from tests.support import PASSWORD, login, make_user
 
 
 def test_health(client):
-    assert client.get("/api/health").json() == {"status": "ok"}
+    """DB가 정상이면 200과 함께 상태를 돌려준다."""
+    res = client.get("/api/health")
+    assert res.status_code == 200
+    assert res.json() == {"status": "ok", "database": "ok"}
+
+
+def test_health_reports_503_when_database_is_down(client, monkeypatch):
+    """DB가 꺼져 있으면 500이 아니라 503과 원인을 돌려준다(배포·발표 전 점검용)."""
+    from sqlalchemy.exc import OperationalError
+
+    import app.main as main
+
+    def broken_session():
+        raise OperationalError("SELECT 1", {}, Exception("DB down"))
+
+    monkeypatch.setattr(main, "SessionLocal", broken_session)
+    res = client.get("/api/health")
+    assert res.status_code == 503
+    body = res.json()
+    assert body["status"] == "degraded" and body["database"] == "unreachable"
 
 
 def test_login_returns_token_and_role(client, people):
