@@ -204,3 +204,35 @@ def test_room_can_carry_tags(client, people, ws):
     tag_id = client.post(f"/api/tag-groups/{gid}/tags", json={"name": "1주차"}, headers=head).json()["tags"][0]["id"]
     room = make_room(client, ws.id, head, tagIds=[tag_id])
     assert room.json()["tagIds"] == [tag_id]
+
+
+# --- 폴링 (운영 환경의 실시간 수신 경로) --------------------------------
+
+
+def test_polling_returns_empty_when_nothing_is_new(client, people, ws):
+    """새 메시지가 없으면 빈 목록. 짧은 주기로 반복 호출해도 안전해야 한다."""
+    head = login(client, "alice")
+    rid = make_room(client, ws.id, head).json()["id"]
+    last = send(client, rid, head, "하나").json()["id"]
+    assert client.get(f"/api/rooms/{rid}/messages?after={last}", headers=head).json() == []
+
+
+def test_polling_picks_up_messages_from_another_member(client, people, ws):
+    """다른 사람이 보낸 메시지를 폴링으로 받는다(WebSocket 없이 대화가 성립)."""
+    alice, bob = login(client, "alice"), login(client, "bob")
+    rid = make_room(client, ws.id, alice).json()["id"]
+    last = send(client, rid, alice, "앨리스").json()["id"]
+    send(client, rid, bob, "밥")
+    new = client.get(f"/api/rooms/{rid}/messages?after={last}", headers=alice).json()
+    assert [m["body"] for m in new] == ["밥"]
+    assert new[0]["authorId"] == people["bob"].id
+
+
+def test_polling_respects_limit_and_keeps_order(client, people, ws):
+    head = login(client, "alice")
+    rid = make_room(client, ws.id, head).json()["id"]
+    last = send(client, rid, head, "기준").json()["id"]
+    for i in range(5):
+        send(client, rid, head, f"{i}")
+    page = client.get(f"/api/rooms/{rid}/messages?after={last}&limit=3", headers=head).json()
+    assert [m["body"] for m in page] == ["0", "1", "2"]

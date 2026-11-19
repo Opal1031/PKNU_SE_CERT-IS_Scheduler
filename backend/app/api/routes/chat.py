@@ -3,8 +3,15 @@
 방은 활동에 속하고, 참여자는 활동 구성원 중에서 따로 고른다. 회의록(WBS 5.3)이
 방에 1:1로 붙으므로 방을 나누면 회의별로 회의록이 생긴다.
 
-실시간 송수신은 WebSocket(/ws/rooms/{roomId})을 쓰되, 서버리스 배포에서 연결이
-유지되지 않을 수 있어 REST 폴링(GET /messages?after=)으로도 같은 결과를 얻게 해 두었다.
+실시간 송수신은 두 경로를 둔다.
+
+- 폴링: GET /messages?after={마지막ID} — **운영 환경(Vercel)에서 쓰는 방식**
+- WebSocket: /ws/rooms/{roomId} — 로컬·Docker 실행에서만 동작
+
+Vercel 서버리스는 WebSocket 업그레이드를 지원하지 않아 배포 환경에서는 연결이 즉시
+끊긴다(2026-11-19 확인). 그래서 프론트엔드는 폴링을 기본으로 구현하고, WebSocket 은
+로컬 개발과 Docker 배포에서만 쓴다. 두 경로 모두 같은 MessageOut 형식을 돌려주므로
+화면 코드는 수신 경로만 바꾸면 된다.
 """
 
 from typing import Annotated
@@ -176,8 +183,9 @@ def list_messages(
 ) -> list[MessageOut]:
     """항상 오래된 것부터 정렬해 돌려준다.
 
-    before 는 과거로 거슬러 올라갈 때, after 는 새 메시지를 가져올 때 쓴다.
-    after 가 있으면 WebSocket 없이 폴링만으로도 대화를 따라갈 수 있다.
+    before 는 과거로 거슬러 올라갈 때(위로 스크롤), after 는 새 메시지를 가져올 때 쓴다.
+    운영 환경에서는 WebSocket 을 쓸 수 없으므로 after 폴링이 실시간 수신의 기본 경로다.
+    새 메시지가 없으면 빈 목록을 돌려주므로 짧은 주기로 반복 호출해도 된다.
     """
     query = select(Message).where(Message.room_id == room.id)
     if after is not None:
@@ -213,7 +221,7 @@ class RoomConnections:
     """방별 WebSocket 연결 목록.
 
     한 프로세스 안에서만 유효하다. 여러 인스턴스로 배포되면 다른 인스턴스에 붙은
-    사람에게는 전달되지 않으므로, 그런 환경에서는 폴링(GET /messages?after=)을 쓴다.
+    사람에게는 전달되지 않는다. Vercel 에서는 연결 자체가 되지 않으므로 폴링을 쓴다.
     """
 
     def __init__(self) -> None:
@@ -239,10 +247,12 @@ connections = RoomConnections()
 
 @router.websocket("/ws/rooms/{room_id}")
 async def chat_socket(websocket: WebSocket, room_id: int, db: DB, token: str = Query(...)) -> None:
-    """실시간 송수신.
+    """실시간 송수신 (로컬·Docker 전용. Vercel 배포에서는 연결되지 않는다).
 
     브라우저 WebSocket 은 헤더를 붙일 수 없어 토큰을 쿼리로 받는다. 연결 시 한 번
     권한을 확인하고, 받은 메시지는 저장한 뒤 같은 방의 다른 연결에 그대로 전달한다.
+
+    운영 환경에서는 GET /messages?after= 폴링이 이 역할을 대신한다.
 
     DB 세션은 get_db 의존성으로 받는다. SessionLocal 을 직접 쓰면 테스트에서 세션을
     바꿔 끼울 수 없어 연결 자체를 검증할 수 없다.
