@@ -201,4 +201,4 @@ erDiagram
 
 - 캘린더 개인 즐겨찾기(핀)는 지금처럼 브라우저 저장을 유지하고, 서버 저장이 필요해지면 `calendar_pins(user_id, target)`를 추가한다.
 - 활동 `field` 값 목록은 활동(웹 보안·네트워크·암호학·시스템 보안)과 AI 설문(웹·리버싱·시스템·포렌식·암호학) 분류가 달라 API에서 허용 목록으로 관리한다.
-- 마이그레이션 도구(Alembic)는 테이블 구조가 안정되면 도입한다. 지금은 `python -m app.seed`가 `create_all`로 테이블을 만든다.
+- 마이그레이션 도구(Alembic)는 테이블 구조가 안정되면 도입한다. 지금은 `app.seed`의 `create_all`로 테이블을 만든다(서버 기동 시 1회, 또는 `python -m app.seed` 수동 실행).
