@@ -157,6 +157,33 @@ PUT /api/rooms/1/document
 
 **버전 이력의 의미** — 이력 한 건은 *그 버전으로 저장되기 직전의 본문*이다. 빈 회의록에서 시작해 두 번 저장하면 이력에는 `v1`(빈 내용), `v2`(첫 저장 내용)가 남고 현재는 `v3`이다. 되돌리기는 이력의 `body`를 현재 `version`을 `baseVersion`으로 삼아 다시 저장하면 된다.
 
+### 동아리방 예약 (WBS 7.1)
+
+시간은 **자정 기준 분**으로 주고받는다(`540`=09:00, `1440`=24:00). 24:00 종료를 `TIME` 타입으로 표현하기 애매해 정수를 쓴다. 운영 시간은 09:00~24:00이고 **30분 단위**로만 예약된다.
+
+| 메서드 | 경로 | 권한 | 설명 |
+|---|---|---|---|
+| GET | `/api/reservations?from=&to=&includeCancelled=` | 로그인 | 기간 조회. 기본은 확정 건만 |
+| POST | `/api/reservations` | 구성원·임원진 | 신청. 겹치면 409 |
+| PATCH | `/api/reservations/{id}` | 예약자·팀장·임원진 | 시간·목적 변경. 겹치면 409 |
+| POST | `/api/reservations/{id}/cancel` | 예약자·팀장·임원진 | `{reason}` — 시간 해제, 기록은 유지 |
+
+**중복 예약을 막는 방식** — 애플리케이션에서 "겹치는지 조회한 뒤 저장"하지 **않는다**. 두 사람이 동시에 누르면 조회와 저장 사이에 끼어들 수 있기 때문이다. 대신 `reservation_slots`의 `(date, slot)` **복합 기본키**에 30분 슬롯 행을 같은 트랜잭션에서 함께 넣는다. 동시 요청은 기본키 중복으로 실패하므로 **한 건만 확정된다**.
+
+거부될 때는 트랜잭션이 통째로 롤백되어 **슬롯이 일부만 남는 일이 없다**. 일부라도 남으면 그 시간이 영영 막힌다.
+
+**사용 목적 가리기** — 다른 활동의 예약은 `purpose`와 `cancelReason`이 `null`로 내려온다. 언제 누가 쓰는지는 공개하되 무엇을 하는지까지 공개할 이유가 없다. 같은 활동 구성원과 임원진에게만 보인다. `canEdit`로 화면이 수정 버튼 노출을 판단한다.
+
+**취소** — 예약 행은 남기고 상태만 `취소`로 바꾸며 슬롯만 해제한다. 누가 왜 취소했는지가 기록으로 남고, 그 시간은 즉시 다시 예약할 수 있다.
+
+```http
+POST /api/reservations
+{"workspaceId": 1, "date": "2026-12-01", "startMinute": 600, "endMinute": 720, "purpose": "스터디"}
+
+409 Conflict
+{"detail": "이미 예약된 시간이 포함되어 있음"}
+```
+
 ```json
 {
   "id": 1, "type": "project", "name": "CERT-IS 통합 관리", "initial": "CI",
@@ -188,10 +215,6 @@ PUT /api/rooms/1/document
 | 태그 | GET/POST/PATCH/DELETE | `/api/workspaces/{id}/tag-groups…` | 구성원 | 그룹·태그 이름·순서 |
 | 캘린더 | GET | `/api/calendar?from=&to=&workspaceId=&mine=&scope=` | 로그인 | 일정 + 예약을 합쳐 반환 |
 | 캘린더 | POST/PATCH/DELETE | `/api/events[/{id}]` | 구성원 / 동아리 일정은 임원진 | 삭제는 `deleted_at` 기록 |
-| 7.1 · BE | GET | `/api/reservations?from=&to=` | 로그인 | 다른 활동 예약은 활동·시간만, 목적 숨김 |
-| 7.1 · BE | POST | `/api/reservations` | 구성원·임원진 | `{workspaceId, date, start, end, purpose}` — 겹치면 409 |
-| 7.1 · BE | PATCH | `/api/reservations/{id}` | 예약자·팀장·임원진 | 시간 변경 시 슬롯 재점유(겹치면 409) |
-| 7.1 · BE | POST | `/api/reservations/{id}/cancel` | 예약자·팀장·임원진 | `{reason}` — 슬롯 해제, 기록은 유지 |
 | 6.x · AI | POST | `/api/ai/survey` | 로그인 | `{answers}` → `{scores, recommendation}` (OpenAI) |
 | 6.x · AI | GET | `/api/ai/survey/latest` | 로그인 | 마지막 결과 복원 |
 
