@@ -277,3 +277,33 @@ def apply_workspace(workspace_id: int, db: DB, user: CurrentUser) -> WorkspaceAp
         raise HTTPException(status.HTTP_409_CONFLICT, detail="이미 신청한 활동임") from error
     db.refresh(application)
     return application
+
+
+@router.post(
+    "/api/workspaces/{workspace_id}/archive",
+    response_model=WorkspaceOut,
+    summary="활동 보관 (팀장·임원진)",
+    responses={
+        status.HTTP_400_BAD_REQUEST: {"model": ErrorOut},
+        status.HTTP_403_FORBIDDEN: {"model": ErrorOut},
+        status.HTTP_404_NOT_FOUND: {"model": ErrorOut},
+    },
+)
+def archive_workspace(workspace_id: int, db: DB, user: CurrentUser) -> WorkspaceOut:
+    """활동을 보관해 목록에서 치운다. 기록은 지우지 않는다.
+
+    실제 삭제(DELETE)를 두지 않은 이유: 회의록·채팅 메시지·예약·일정이 활동에
+    ondelete="CASCADE" 로 묶여 있어, 행을 지우면 그 활동에서 오간 기록이 전부 함께
+    사라진다. 잘못 만든 활동을 치우려다 회의 기록을 잃는 쪽이 더 큰 손해다.
+
+    보관하면 조회 전용이 되어 일정·회의록·채팅 전송이 모두 막히고(can_write_workspace),
+    활동 목록에서는 status 필터로 걸러진다. 되돌리려면 PATCH 로 상태를 바꾸면 된다.
+    """
+    ws = load_workspace(db, workspace_id)
+    if not (perm.is_leader(ws, user) or perm.is_officer(user)):
+        raise forbidden("활동 팀장 또는 임원진만 보관할 수 있음")
+    if ws.status == perm.ARCHIVED:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="이미 보관된 활동임")
+    ws.status = perm.ARCHIVED
+    db.commit()
+    return to_out(ws, user)
